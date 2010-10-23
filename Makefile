@@ -15,7 +15,7 @@ STRIP=$(CROSS)objcopy
 
 CFLAGS=-Wall -O2
 INCLUDES=-I/opt/mipsel-linux-uclibc/usr/include
-LIBS=-lasound -lSDL
+LIBS=-lasound
 
 
 all: $(OBJS)
