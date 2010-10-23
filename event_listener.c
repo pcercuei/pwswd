@@ -1,0 +1,289 @@
+
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/input.h>
+#include <linux/uinput.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <assert.h>
+
+#include "shortcut_handler.h"
+#include "backend/backends.h"
+
+#define EVENT_FILENAME  "/dev/event0"
+#define UINPUT_FILENAME "/dev/uinput"
+
+#ifdef DEBUG
+#define DEBUGMSG(msg...) printf(msg)
+#else
+#define DEBUGMSG(msg...)
+#endif
+
+
+static struct uinput_user_dev uud = {
+    .name = "OpenDingux mouse daemon",
+    .id = { BUS_USB, 1,1,1 },
+};
+
+
+enum _mode {
+    NORMAL, MOUSE, HOLD
+};
+
+static enum _mode mode = NORMAL;
+
+
+static FILE *event0 = NULL;
+static FILE *uinput = NULL;
+
+static int grabbed = 0;
+
+
+static void switchmode(enum _mode new) {
+    if (new == mode) return;
+
+    switch(mode) {
+        case NORMAL:
+            switch(new) {
+                case MOUSE:
+                case HOLD:
+                    grabbed = 1;
+                default:
+                    mode = new;
+                    return;
+            }
+            break;
+        case MOUSE:
+        case HOLD:
+            switch(new) {
+                case NORMAL:
+                    grabbed = 0;
+                default:
+                    mode = new;
+                    return;
+            }
+        default:
+            break;
+    }
+}
+
+
+static void execute(enum event_type event, int value) {
+    char *str;
+    switch(event) {
+        case reboot:
+            if (value == 2) return;
+            str = "reboot";
+            do_reboot();
+            break;
+        case poweroff:
+            if (value == 2) return;
+            str = "poweroff";
+            do_poweroff();
+            break;
+        case suspend:
+            if (value == 2) return;
+            str = "suspend";
+            break;
+        case hold:
+            if (value == 2) return;
+            str = "hold";
+            if (mode == HOLD)
+              switchmode(NORMAL);
+            else
+              switchmode(HOLD);
+            break;
+        case volup:
+            str = "volup";
+            vol_up();
+            break;
+        case voldown:
+            str = "voldown";
+            vol_down();
+            break;
+        case brightup:
+            str = "brightup";
+            bright_up();
+            break;
+        case brightdown:
+            str = "brightdown";
+            bright_down();
+            break;
+        case mouse:
+            if (value == 2) return;
+            str = "mouse";
+            if (mode == MOUSE)
+              switchmode(NORMAL);
+            else
+              switchmode(MOUSE);
+            break;
+        default:
+            return;
+    }
+    DEBUGMSG("Execute: %s.\n", str);
+}
+
+
+static void open_fds(const char *event0fn, const char *uinputfn) {
+    event0 = fopen(event0fn, "r");
+    assert(event0);
+
+    uinput = fopen(uinputfn, "r+");
+    assert(uinput);
+
+    write(fileno(uinput), &uud, sizeof(uud));
+    assert(!ioctl(fileno(uinput), UI_SET_EVBIT, EV_KEY));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_LEFT));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_MIDDLE));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_RIGHT));
+
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_SPACE));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_LEFTSHIFT));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_TAB));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_BACKSPACE));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_ENTER));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_ESC));
+
+    assert(!ioctl(fileno(uinput), UI_SET_EVBIT, EV_REL));
+    assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_X));
+    assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_Y));
+    assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_WHEEL));
+
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_MOUSE));
+
+    assert(!ioctl(fileno(uinput), UI_DEV_CREATE));
+}
+
+
+int do_listen()
+{
+    open_fds(EVENT_FILENAME, UINPUT_FILENAME);
+
+    struct shortcut *tmp;
+    const struct shortcut *shortcuts = getShortcuts();
+    struct input_event my_event, inject_event;
+    unsigned int i;
+
+    // booleans
+    int key_combo, changed;
+    int power_button_pressed=0;
+
+    for(;;) {
+        fread(&my_event, sizeof(struct input_event), 1, event0);
+
+        // If the power button is pressed, block inputs (if it wasn't already blocked)
+        if (my_event.code == KEY_POWER) {
+            
+            // We don't want key repeats on the power button.
+            if (my_event.value == 2)
+              continue;
+
+            DEBUGMSG("(un)grabbing.\n");
+            power_button_pressed = my_event.value;
+
+            if (!grabbed) {
+                if (power_button_pressed)
+                  assert(!ioctl(fileno(event0), EVIOCGRAB, 1));
+                else
+                  assert(!ioctl(fileno(event0), EVIOCGRAB, 0));
+            }
+            continue;
+        }
+
+
+        // If the power button is currently pressed, we enable shortcuts.
+        if (power_button_pressed) {
+
+            tmp = (struct shortcut *)shortcuts;
+            while(tmp) {
+                key_combo = 1;
+                changed = 0;
+
+                for(i=0; i < tmp->nb_keys; i++)
+                  if (my_event.code == tmp->keys[i]) {
+                      changed = 1;
+                      tmp->states[i] = (my_event.value != 0);
+                  }
+
+                if (changed) {
+                    for (i=0; i < tmp->nb_keys; i++)
+                      key_combo &= tmp->states[i];
+
+                    if (key_combo)
+                      execute(tmp->action, my_event.value);
+                }
+
+                tmp = tmp->prev;
+            }
+            continue;
+        }
+
+        // In case we are in the "mouse" mode, enable mouse emulation.
+        if (mode == MOUSE) {
+            switch(my_event.code) {
+                case KEY_LEFT:
+                    inject_event.type = EV_REL;
+                    inject_event.code = REL_X;
+                    inject_event.value = -5;
+                    break;
+                case KEY_RIGHT:
+                    inject_event.type = EV_REL;
+                    inject_event.code = REL_X;
+                    inject_event.value = 5;
+                    break;
+                case KEY_DOWN:
+                    inject_event.type = EV_REL;
+                    inject_event.code = REL_Y;
+                    inject_event.value = 5;
+                    break;
+                case KEY_UP:
+                    inject_event.type = EV_REL;
+                    inject_event.code = REL_Y;
+                    inject_event.value = -5;
+                    break;
+                case KEY_LEFTCTRL:
+                    if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
+                      continue;
+                    inject_event.type = EV_KEY;
+                    inject_event.code = BTN_LEFT;
+                    inject_event.value = my_event.value;
+                    break;
+                case KEY_LEFTALT:
+                    if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
+                      continue;
+                    inject_event.type = EV_KEY;
+                    inject_event.code = BTN_RIGHT;
+                    inject_event.value = my_event.value;
+                    break;
+                case KEY_SPACE:
+                case KEY_LEFTSHIFT:
+                case KEY_TAB:
+                case KEY_BACKSPACE:
+                case KEY_ENTER:
+                case KEY_ESC:
+                    inject_event.type = EV_KEY;
+                    inject_event.code = my_event.code;
+                    inject_event.value = my_event.value;
+                    break;
+                default:
+                    continue;
+            }
+
+            DEBUGMSG("Injecting event.\n");
+            inject_event.time.tv_sec = time(0);
+            inject_event.time.tv_usec = 0;
+            write(fileno(uinput), &inject_event, sizeof(struct input_event));
+
+            inject_event.type = EV_SYN;
+            inject_event.code = SYN_REPORT;
+            inject_event.value = 0;
+            inject_event.time.tv_usec = 0;
+            inject_event.time.tv_sec = time(0);
+            write(fileno(uinput), &inject_event, sizeof(struct input_event));
+
+        }
+    }
+
+    return -1;
+}
