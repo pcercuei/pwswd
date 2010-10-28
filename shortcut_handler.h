@@ -4,6 +4,7 @@
 
 #define NB_MAX_KEYS 4
 
+
 enum event_type {
     reboot, poweroff, suspend, hold,
     volup, voldown,
@@ -11,10 +12,17 @@ enum event_type {
     mouse,
 };
 
+
+struct button {
+    const char *name;
+    unsigned short id;
+    unsigned short state;
+};
+
+
 struct shortcut {
     enum event_type action;
-    unsigned short keys[NB_MAX_KEYS];
-    unsigned short states[NB_MAX_KEYS];
+    struct button * keys[NB_MAX_KEYS];
     int nb_keys;
     struct shortcut *prev;
 };

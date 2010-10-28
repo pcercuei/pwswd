@@ -1,13 +1,13 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <linux/input.h>
 #include <linux/uinput.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
 
+#include "event_listener.h"
 #include "shortcut_handler.h"
 #include "backend/backends.h"
 
@@ -32,6 +32,24 @@ enum _mode {
 };
 
 static enum _mode mode = NORMAL;
+
+
+struct button buttons[NB_BUTTONS] = {
+    _BUTTON(UP),
+    _BUTTON(DOWN),
+    _BUTTON(LEFT),
+    _BUTTON(RIGHT),
+    _BUTTON(A),
+    _BUTTON(B),
+    _BUTTON(X),
+    _BUTTON(Y),
+    _BUTTON(L),
+    _BUTTON(R),
+    _BUTTON(SELECT),
+    _BUTTON(START),
+    _BUTTON(POWER),
+    _BUTTON(HOLD),
+};
 
 
 static FILE *event0 = NULL;
@@ -201,14 +219,14 @@ int do_listen()
                 changed = 0;
 
                 for(i=0; i < tmp->nb_keys; i++)
-                  if (my_event.code == tmp->keys[i]) {
+                  if (my_event.code == tmp->keys[i]->id) {
                       changed = 1;
-                      tmp->states[i] = (my_event.value != 0);
+                      tmp->keys[i]->state = (my_event.value != 0);
                   }
 
                 if (changed) {
                     for (i=0; i < tmp->nb_keys; i++)
-                      key_combo &= tmp->states[i];
+                      key_combo &= tmp->keys[i]->state;
 
                     if (key_combo)
                       execute(tmp->action, my_event.value);

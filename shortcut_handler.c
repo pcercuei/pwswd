@@ -3,9 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "event_listener.h"
 #include "shortcut_handler.h"
 
 static struct shortcut *shortcuts = NULL;
+
+extern struct button buttons[NB_BUTTONS];
 
 static void shortcut_free(struct shortcut *scuts) {
     struct shortcut *prev;
@@ -24,7 +27,7 @@ int read_conf_file(const char *filename) {
     char *word;
     struct shortcut *newone=NULL, *prev=NULL;
 
-    unsigned int i,j;
+    unsigned int i,j,k;
     for (i=0;;i++) {
         if (fgets(line, 0x100, conf) == NULL)
           break;
@@ -63,17 +66,20 @@ int read_conf_file(const char *filename) {
             return -3;
         }
 
-        memset(newone->keys,   0, NB_MAX_KEYS*sizeof(unsigned short));
-        memset(newone->states, 0, NB_MAX_KEYS*sizeof(unsigned short));
-
         j=0;
-        while( (word = strtok(NULL, ",")) != NULL) {
+        while( (word = strtok(NULL, ",\n")) != NULL) {
             if (j>= NB_MAX_KEYS) {
                 fclose(conf);
                 shortcut_free(newone);
                 return -4;
             }
-            newone->keys[j++] = atoi(word);
+
+            for (k=0; k < NB_BUTTONS; k++) {
+                if (!strcmp(buttons[k].name, word)) {
+                    newone->keys[j++] = &buttons[k];
+                    break;
+                }
+            }
         }
 
         newone->nb_keys = j;
