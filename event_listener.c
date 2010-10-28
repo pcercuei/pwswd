@@ -239,67 +239,97 @@ int do_listen()
 
         // In case we are in the "mouse" mode, enable mouse emulation.
         if (mode == MOUSE) {
+
+            for (i=0; i<NB_BUTTONS; i++) {
+                if (buttons[i].id == my_event.code)
+                  buttons[i].state = my_event.value;
+            }
+            
             switch(my_event.code) {
-                case KEY_LEFT:
-                    inject_event.type = EV_REL;
-                    inject_event.code = REL_X;
-                    inject_event.value = -5;
+                case BUTTON_LEFT:
+                case BUTTON_RIGHT:
+                case BUTTON_DOWN:
+                case BUTTON_UP:
+                    for (i=0; i<NB_BUTTONS; i++) {
+                        if (!buttons[i].state)
+                          continue;
+
+                        switch(buttons[i].id) {
+                            case BUTTON_LEFT:
+                                inject_event.code = REL_X;
+                                inject_event.value = -5;
+                                break;
+                            case BUTTON_RIGHT:
+                                inject_event.code = REL_X;
+                                inject_event.value = 5;
+                                break;
+                            case BUTTON_DOWN:
+                                inject_event.code = REL_Y;
+                                inject_event.value = 5;
+                                break;
+                            case BUTTON_UP:
+                                inject_event.code = REL_Y;
+                                inject_event.value = -5;
+                                break;
+                            default:
+                                continue;
+                        }
+
+                        inject_event.type = EV_REL;
+                        inject_event.time.tv_sec = time(0);
+                        inject_event.time.tv_usec = 0;
+                        write(fileno(uinput), &inject_event, sizeof(struct input_event));
+                    }
                     break;
-                case KEY_RIGHT:
-                    inject_event.type = EV_REL;
-                    inject_event.code = REL_X;
-                    inject_event.value = 5;
-                    break;
-                case KEY_DOWN:
-                    inject_event.type = EV_REL;
-                    inject_event.code = REL_Y;
-                    inject_event.value = 5;
-                    break;
-                case KEY_UP:
-                    inject_event.type = EV_REL;
-                    inject_event.code = REL_Y;
-                    inject_event.value = -5;
-                    break;
-                case KEY_LEFTCTRL:
+
+                case BUTTON_A:
                     if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
                       continue;
                     inject_event.type = EV_KEY;
                     inject_event.code = BTN_LEFT;
                     inject_event.value = my_event.value;
+                    inject_event.time.tv_sec = time(0);
+                    inject_event.time.tv_usec = 0;
+                    write(fileno(uinput), &inject_event, sizeof(struct input_event));
                     break;
-                case KEY_LEFTALT:
+
+                case BUTTON_B:
                     if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
                       continue;
                     inject_event.type = EV_KEY;
                     inject_event.code = BTN_RIGHT;
                     inject_event.value = my_event.value;
+                    inject_event.time.tv_sec = time(0);
+                    inject_event.time.tv_usec = 0;
+                    write(fileno(uinput), &inject_event, sizeof(struct input_event));
                     break;
-                case KEY_SPACE:
-                case KEY_LEFTSHIFT:
-                case KEY_TAB:
-                case KEY_BACKSPACE:
-                case KEY_ENTER:
-                case KEY_ESC:
+
+                case BUTTON_X:
+                case BUTTON_Y:
+                case BUTTON_L:
+                case BUTTON_R:
+                case BUTTON_START:
+                case BUTTON_SELECT:
                     inject_event.type = EV_KEY;
                     inject_event.code = my_event.code;
                     inject_event.value = my_event.value;
-                    break;
+                    inject_event.time.tv_sec = time(0);
+                    inject_event.time.tv_usec = 0;
+                    write(fileno(uinput), &inject_event, sizeof(struct input_event));
+                    continue;
+
                 default:
                     continue;
             }
 
             DEBUGMSG("Injecting event.\n");
-            inject_event.time.tv_sec = time(0);
-            inject_event.time.tv_usec = 0;
-            write(fileno(uinput), &inject_event, sizeof(struct input_event));
 
+            inject_event.value = 0;
             inject_event.type = EV_SYN;
             inject_event.code = SYN_REPORT;
-            inject_event.value = 0;
-            inject_event.time.tv_usec = 0;
             inject_event.time.tv_sec = time(0);
+            inject_event.time.tv_usec = 0;
             write(fileno(uinput), &inject_event, sizeof(struct input_event));
-
         }
     }
 
