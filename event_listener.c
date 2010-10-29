@@ -65,6 +65,7 @@ static void switchmode(enum _mode new) {
         case NORMAL:
             switch(new) {
                 case MOUSE:
+                    assert(!fcntl(fileno(event0), F_SETFL, O_NONBLOCK));
                 case HOLD:
                     grabbed = 1;
                 default:
@@ -73,6 +74,7 @@ static void switchmode(enum _mode new) {
             }
             break;
         case MOUSE:
+            assert(!fcntl(fileno(event0), F_SETFL, 0));
         case HOLD:
             switch(new) {
                 case NORMAL:
@@ -202,127 +204,156 @@ int do_listen()
     // booleans
     int key_combo, changed;
     int power_button_pressed=0;
+    int read;
 
     for(;;) {
-        fread(&my_event, sizeof(struct input_event), 1, event0);
 
-        // If the power button is pressed, block inputs (if it wasn't already blocked)
-        if (my_event.code == KEY_POWER) {
-            
-            // We don't want key repeats on the power button.
-            if (my_event.value == 2)
-              continue;
+        // We wait for an event.
+        // On mouse mode, this call does not block,
+        read = fread(&my_event, sizeof(struct input_event), 1, event0);
 
-            DEBUGMSG("(un)grabbing.\n");
-            power_button_pressed = my_event.value;
+        // If we are on "mouse" mode and nothing has been read, let's wait for a bit.
+        if (mode == MOUSE && !read)
+          usleep(10000);
 
-            if (!grabbed) {
-                if (power_button_pressed)
-                  assert(!ioctl(fileno(event0), EVIOCGRAB, 1));
-                else
-                  assert(!ioctl(fileno(event0), EVIOCGRAB, 0));
-            }
-            continue;
-        }
+        // hence the check on the return value here.
+        if (read) {
+            // If the power button is pressed, block inputs (if it wasn't already blocked)
+            if (my_event.code == KEY_POWER) {
 
+                // We don't want key repeats on the power button.
+                if (my_event.value == 2)
+                  continue;
 
-        // If the power button is currently pressed, we enable shortcuts.
-        if (power_button_pressed) {
+                DEBUGMSG("(un)grabbing.\n");
+                power_button_pressed = my_event.value;
 
-            tmp = (struct shortcut *)shortcuts;
-            while(tmp) {
-                key_combo = 1;
-                changed = 0;
-
-                for(i=0; i < tmp->nb_keys; i++)
-                  if (my_event.code == tmp->keys[i]->id) {
-                      changed = 1;
-                      tmp->keys[i]->state = (my_event.value != 0);
-                  }
-
-                if (changed) {
-                    for (i=0; i < tmp->nb_keys; i++)
-                      key_combo &= tmp->keys[i]->state;
-
-                    if (key_combo)
-                      execute(tmp->action, my_event.value);
+                if (!grabbed) {
+                    if (power_button_pressed)
+                      assert(!ioctl(fileno(event0), EVIOCGRAB, 1));
+                    else
+                      assert(!ioctl(fileno(event0), EVIOCGRAB, 0));
                 }
-
-                tmp = tmp->prev;
+                continue;
             }
-            continue;
+
+
+            // If the power button is currently pressed, we enable shortcuts.
+            if (power_button_pressed) {
+
+                tmp = (struct shortcut *)shortcuts;
+                while(tmp) {
+                    key_combo = 1;
+                    changed = 0;
+
+                    for(i=0; i < tmp->nb_keys; i++)
+                      if (my_event.code == tmp->keys[i]->id) {
+                          changed = 1;
+                          tmp->keys[i]->state = (my_event.value != 0);
+                      }
+
+                    if (changed) {
+                        for (i=0; i < tmp->nb_keys; i++)
+                          key_combo &= tmp->keys[i]->state;
+
+                        if (key_combo)
+                            execute(tmp->action, my_event.value);
+                    }
+
+                    tmp = tmp->prev;
+                }
+                continue;
+            }
+
         }
 
-        // In case we are in the "mouse" mode, enable mouse emulation.
+        // In case we are in the "mouse" mode, handle mouse emulation.
         if (mode == MOUSE) {
 
-            for (i=0; i<NB_BUTTONS; i++) {
-                if (buttons[i].id == my_event.code)
-                  buttons[i].state = my_event.value;
-            }
-            
-            switch(my_event.code) {
-                case BUTTON_LEFT:
-                case BUTTON_RIGHT:
-                case BUTTON_DOWN:
-                case BUTTON_UP:
-                    for (i=0; i<NB_BUTTONS; i++) {
-                        if (!buttons[i].state)
+            // We don't want to move the mouse if the power button is pressed.
+            if (power_button_pressed)
+              continue;
+
+            // An event occured
+            if (read) {
+
+                // Toggle the "value" flag of the button object
+                for (i=0; i<NB_BUTTONS; i++) {
+                    if (buttons[i].id == my_event.code)
+                      buttons[i].state = my_event.value;
+                }
+
+                switch(my_event.code) {
+                    case BUTTON_LEFT:
+                    case BUTTON_RIGHT:
+                    case BUTTON_DOWN:
+                    case BUTTON_UP:
+                        // We don't care, it will be handled sooner or later.
+                        continue;
+
+                    case BUTTON_A:
+                        if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
                           continue;
 
-                        switch(buttons[i].id) {
-                            case BUTTON_LEFT:
-                                code = REL_X;
-                                value = -5;
-                                break;
-                            case BUTTON_RIGHT:
-                                code = REL_X;
-                                value = 5;
-                                break;
-                            case BUTTON_DOWN:
-                                code = REL_Y;
-                                value = 5;
-                                break;
-                            case BUTTON_UP:
-                                code = REL_Y;
-                                value = -5;
-                                break;
-                            default:
-                                continue;
-                        }
+                        inject(EV_KEY, BTN_LEFT, my_event.value);
+                        inject(EV_SYN, SYN_REPORT, 0);
+                        continue;
 
-                        inject(EV_REL, code, value);
-                    }
-                    break;
+                    case BUTTON_B:
+                        if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
+                          continue;
 
-                case BUTTON_A:
-                    if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
-                      continue;
+                        inject(EV_KEY, BTN_RIGHT, my_event.value);
+                        inject(EV_SYN, SYN_REPORT, 0);
+                        continue;
 
-                    inject(EV_KEY, BTN_LEFT, my_event.value);
-                    break;
+                    case BUTTON_X:
+                    case BUTTON_Y:
+                    case BUTTON_L:
+                    case BUTTON_R:
+                    case BUTTON_START:
+                    case BUTTON_SELECT:
+                        inject(EV_KEY, my_event.code, my_event.value);
+                        continue;
 
-                case BUTTON_B:
-                    if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
-                      continue;
+                    default:
+                        continue;
+                }
 
-                    inject(EV_KEY, BTN_RIGHT, my_event.value);
-                    break;
 
-                case BUTTON_X:
-                case BUTTON_Y:
-                case BUTTON_L:
-                case BUTTON_R:
-                case BUTTON_START:
-                case BUTTON_SELECT:
-                    inject(EV_KEY, code, value);
-                    continue;
-
-                default:
-                    continue;
             }
 
-            inject(EV_SYN, SYN_REPORT, 0);
+            // No event this time
+            else {
+                for (i=0; i<NB_BUTTONS; i++) {
+                    if (!buttons[i].state)
+                      continue;
+
+                    switch(buttons[i].id) {
+                        case BUTTON_LEFT:
+                            code = REL_X;
+                            value = -5;
+                            break;
+                        case BUTTON_RIGHT:
+                            code = REL_X;
+                            value = 5;
+                            break;
+                        case BUTTON_DOWN:
+                            code = REL_Y;
+                            value = 5;
+                            break;
+                        case BUTTON_UP:
+                            code = REL_Y;
+                            value = -5;
+                            break;
+                        default:
+                            continue;
+                    }
+
+                    inject(EV_REL, code, value);
+                    inject(EV_SYN, SYN_REPORT, 0);
+                }
+            }
         }
     }
 
