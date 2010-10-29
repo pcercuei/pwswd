@@ -174,14 +174,30 @@ static void open_fds(const char *event0fn, const char *uinputfn) {
 }
 
 
+static int inject(unsigned short type, unsigned short code, int value) {
+    struct input_event inject_event;
+
+    DEBUGMSG("Injecting event.\n");
+    inject_event.value = value;
+    inject_event.type = type;
+    inject_event.code = code;
+    inject_event.time.tv_sec = time(0);
+    inject_event.time.tv_usec = 0;
+    return write(fileno(uinput), &inject_event, sizeof(struct input_event));
+}
+
+
 int do_listen()
 {
     open_fds(EVENT_FILENAME, UINPUT_FILENAME);
 
     struct shortcut *tmp;
     const struct shortcut *shortcuts = getShortcuts();
-    struct input_event my_event, inject_event;
+    struct input_event my_event;
     unsigned int i;
+
+    unsigned short code = 0;
+    int value = 0;
 
     // booleans
     int key_combo, changed;
@@ -256,52 +272,41 @@ int do_listen()
 
                         switch(buttons[i].id) {
                             case BUTTON_LEFT:
-                                inject_event.code = REL_X;
-                                inject_event.value = -5;
+                                code = REL_X;
+                                value = -5;
                                 break;
                             case BUTTON_RIGHT:
-                                inject_event.code = REL_X;
-                                inject_event.value = 5;
+                                code = REL_X;
+                                value = 5;
                                 break;
                             case BUTTON_DOWN:
-                                inject_event.code = REL_Y;
-                                inject_event.value = 5;
+                                code = REL_Y;
+                                value = 5;
                                 break;
                             case BUTTON_UP:
-                                inject_event.code = REL_Y;
-                                inject_event.value = -5;
+                                code = REL_Y;
+                                value = -5;
                                 break;
                             default:
                                 continue;
                         }
 
-                        inject_event.type = EV_REL;
-                        inject_event.time.tv_sec = time(0);
-                        inject_event.time.tv_usec = 0;
-                        write(fileno(uinput), &inject_event, sizeof(struct input_event));
+                        inject(EV_REL, code, value);
                     }
                     break;
 
                 case BUTTON_A:
                     if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
                       continue;
-                    inject_event.type = EV_KEY;
-                    inject_event.code = BTN_LEFT;
-                    inject_event.value = my_event.value;
-                    inject_event.time.tv_sec = time(0);
-                    inject_event.time.tv_usec = 0;
-                    write(fileno(uinput), &inject_event, sizeof(struct input_event));
+
+                    inject(EV_KEY, BTN_LEFT, my_event.value);
                     break;
 
                 case BUTTON_B:
                     if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
                       continue;
-                    inject_event.type = EV_KEY;
-                    inject_event.code = BTN_RIGHT;
-                    inject_event.value = my_event.value;
-                    inject_event.time.tv_sec = time(0);
-                    inject_event.time.tv_usec = 0;
-                    write(fileno(uinput), &inject_event, sizeof(struct input_event));
+
+                    inject(EV_KEY, BTN_RIGHT, my_event.value);
                     break;
 
                 case BUTTON_X:
@@ -310,26 +315,14 @@ int do_listen()
                 case BUTTON_R:
                 case BUTTON_START:
                 case BUTTON_SELECT:
-                    inject_event.type = EV_KEY;
-                    inject_event.code = my_event.code;
-                    inject_event.value = my_event.value;
-                    inject_event.time.tv_sec = time(0);
-                    inject_event.time.tv_usec = 0;
-                    write(fileno(uinput), &inject_event, sizeof(struct input_event));
+                    inject(EV_KEY, code, value);
                     continue;
 
                 default:
                     continue;
             }
 
-            DEBUGMSG("Injecting event.\n");
-
-            inject_event.value = 0;
-            inject_event.type = EV_SYN;
-            inject_event.code = SYN_REPORT;
-            inject_event.time.tv_sec = time(0);
-            inject_event.time.tv_usec = 0;
-            write(fileno(uinput), &inject_event, sizeof(struct input_event));
+            inject(EV_SYN, SYN_REPORT, 0);
         }
     }
 
