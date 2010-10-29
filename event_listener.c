@@ -158,12 +158,12 @@ static void open_fds(const char *event0fn, const char *uinputfn) {
     assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_MIDDLE));
     assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_RIGHT));
 
-    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_SPACE));
-    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_LEFTSHIFT));
-    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_TAB));
-    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_BACKSPACE));
-    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_ENTER));
-    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, KEY_ESC));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_X));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_Y));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_L));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_R));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_START));
+    assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_SELECT));
 
     assert(!ioctl(fileno(uinput), UI_SET_EVBIT, EV_REL));
     assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_X));
