@@ -65,6 +65,8 @@ static void switchmode(enum _mode new) {
         case NORMAL:
             switch(new) {
                 case MOUSE:
+                    // Enable non-blocking reads: we won't have to wait for an event
+                    // to process mouse emulation.
                     assert(!fcntl(fileno(event0), F_SETFL, O_NONBLOCK));
                 case HOLD:
                     grabbed = 1;
@@ -74,6 +76,7 @@ static void switchmode(enum _mode new) {
             }
             break;
         case MOUSE:
+            // Disable non-blocking reads.
             assert(!fcntl(fileno(event0), F_SETFL, 0));
         case HOLD:
             switch(new) {
@@ -203,20 +206,19 @@ int do_listen()
 
     // booleans
     int key_combo, changed;
-    int power_button_pressed=0;
+    int power_button_pressed = 0;
     int read;
 
     for(;;) {
 
         // We wait for an event.
-        // On mouse mode, this call does not block,
+        // On mouse mode, this call does not block.
         read = fread(&my_event, sizeof(struct input_event), 1, event0);
 
         // If we are on "mouse" mode and nothing has been read, let's wait for a bit.
         if (mode == MOUSE && !read)
           usleep(10000);
 
-        // hence the check on the return value here.
         if (read) {
             // If the power button is pressed, block inputs (if it wasn't already blocked)
             if (my_event.code == KEY_POWER) {
@@ -313,6 +315,8 @@ int do_listen()
                     case BUTTON_R:
                     case BUTTON_START:
                     case BUTTON_SELECT:
+
+                        // If the event is not mouse-related, we reinject it.
                         inject(EV_KEY, my_event.code, my_event.value);
                         continue;
 
@@ -325,6 +329,9 @@ int do_listen()
 
             // No event this time
             else {
+
+                // For each direction of the D-pad, we check the state of the corresponding button.
+                // If it is pressed, we inject an event with the corresponding mouse movement.
                 for (i=0; i<NB_BUTTONS; i++) {
                     if (!buttons[i].state)
                       continue;
