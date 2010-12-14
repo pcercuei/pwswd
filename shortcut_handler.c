@@ -60,6 +60,10 @@ int read_conf_file(const char *filename) {
           newone->action = brightdown;
         else if (!strcmp(word, "mouse"))
           newone->action = mouse;
+        else if (!strcmp(word, "tvout"))
+          newone->action = tvout;
+        else if (!strcmp(word, "screenshot"))
+          newone->action = screenshot;
         else {
             fclose(conf);
             shortcut_free(newone);

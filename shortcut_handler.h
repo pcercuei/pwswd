@@ -9,7 +9,7 @@ enum event_type {
     reboot, poweroff, suspend, hold,
     volup, voldown,
     brightup, brightdown,
-    mouse,
+    mouse, tvout, screenshot,
 };
 
 

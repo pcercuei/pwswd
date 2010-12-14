@@ -141,6 +141,13 @@ static void execute(enum event_type event, int value) {
             else
               switchmode(MOUSE);
             break;
+        case tvout:
+            str = "tvout";
+            break;
+        case screenshot:
+            str = "screenshot";
+            do_screenshot();
+            break;
         default:
             return;
     }

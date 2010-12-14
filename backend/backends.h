@@ -6,5 +6,6 @@
 #include "brightness/bright_backend.h"
 #include "reboot/reboot_backend.h"
 #include "poweroff/poweroff_backend.h"
+#include "screenshot/screenshot_backend.h"
 
 #endif

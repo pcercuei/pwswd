@@ -6,6 +6,7 @@ OBJS += backend/brightness/brightness.o
 OBJS += backend/volume/volume.o
 OBJS += backend/poweroff/poweroff.o
 OBJS += backend/reboot/reboot.o
+OBJS += backend/screenshot/screenshot.o
 
 
 CROSS=mipsel-linux-uclibc-
@@ -15,7 +16,7 @@ STRIP=$(CROSS)objcopy
 
 CFLAGS=-Wall -O2
 INCLUDES=-I/opt/mipsel-linux-uclibc/usr/include
-LIBS=-lasound
+LIBS=-lasound -lpng
 
 
 all: $(OBJS)
