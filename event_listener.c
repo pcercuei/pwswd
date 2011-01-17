@@ -143,6 +143,7 @@ static void execute(enum event_type event, int value) {
             break;
         case tvout:
             str = "tvout";
+			tv_out();
             break;
         case screenshot:
             str = "screenshot";

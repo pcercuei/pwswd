@@ -7,5 +7,6 @@
 #include "reboot/reboot_backend.h"
 #include "poweroff/poweroff_backend.h"
 #include "screenshot/screenshot_backend.h"
+#include "tvout/tvout_backend.h"
 
 #endif
