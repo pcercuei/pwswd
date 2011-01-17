@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <ctype.h>
 #include <alsa/asoundlib.h>
 
 #include "vol_backend.h"
