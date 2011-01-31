@@ -28,7 +28,7 @@ static void bright_init() {
     current_value = atoi(tmp);
 }
 
-void bright_up() {
+void bright_up(int event_value) {
     if (!dev_file) bright_init();
 
     if (current_value == max_brightness)
@@ -39,7 +39,7 @@ void bright_up() {
     write(fileno(dev_file), tmp, strlen(tmp)+1);
 }
 
-void bright_down() {
+void bright_down(int event_value) {
     if (!dev_file) bright_init();
 
     if (current_value == 5)

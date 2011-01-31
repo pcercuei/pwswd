@@ -119,19 +119,19 @@ static void execute(enum event_type event, int value) {
             break;
         case volup:
             str = "volup";
-            vol_up();
+            vol_up(value);
             break;
         case voldown:
             str = "voldown";
-            vol_down();
+            vol_down(value);
             break;
         case brightup:
             str = "brightup";
-            bright_up();
+            bright_up(value);
             break;
         case brightdown:
             str = "brightdown";
-            bright_down();
+            bright_down(value);
             break;
         case mouse:
             if (value == 2) return;

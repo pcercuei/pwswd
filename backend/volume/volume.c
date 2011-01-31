@@ -138,13 +138,13 @@ static long getVolume() {
 }
 
 
-void vol_down() {
+void vol_down(int event_value) {
     long cur = getVolume();
     if (cur > STEP_VALUE-1)
       setVolume(cur - STEP_VALUE);
 }
 
-void vol_up() {
+void vol_up(int event_value) {
     long cur = getVolume();
     if (cur < max-min - STEP_VALUE+1)
       setVolume(cur + STEP_VALUE);
