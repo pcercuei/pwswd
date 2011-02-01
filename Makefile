@@ -1,5 +1,5 @@
 
-TARGET=pwswbd
+TARGET=pwswd
 OBJS=event_listener.o shortcut_handler.o main.o
 
 OBJS += backend/brightness/brightness.o

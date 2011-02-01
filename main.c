@@ -6,7 +6,7 @@
 #include "event_listener.h"
 
 #ifndef PROGNAME
-#define PROGNAME "pwswbd"
+#define PROGNAME "pwswd"
 #endif
 
 
