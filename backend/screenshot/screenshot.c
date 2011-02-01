@@ -177,7 +177,7 @@ static void * screenshot_thd(void* p)
     png_write_end(data->png, data->info);
     png_destroy_write_struct(&data->png, &data->info);
 
-    printf("Wrote to " SCREENSHOTS "\n", n-1);
+    printf("Wrote to " SCREENSHOTS "\n", n);
 
     if (data->pngfile)
       fclose(data->pngfile);
