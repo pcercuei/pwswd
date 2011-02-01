@@ -7,15 +7,13 @@
 
 #define CONTROL_NAME "SoftMaster"
 
-#define STEP_VALUE 1
+#define STEP_VALUE 10
 
 static char card[] = "default";
 
-static snd_mixer_t *handle = NULL;
 static snd_mixer_elem_t *elem;
-static snd_mixer_selem_id_t *sid;
-static long min, max;
-static int inited = 0;
+static long min = 0, max = 0;
+static long current;
 
 static int parse_simple_id(const char *str, snd_mixer_selem_id_t *sid)
 {
@@ -60,92 +58,118 @@ static int parse_simple_id(const char *str, snd_mixer_selem_id_t *sid)
 	if (!isdigit(*str))
 		return -EINVAL;
 	snd_mixer_selem_id_set_index(sid, atoi(str));
-       _set:
+_set:
 	snd_mixer_selem_id_set_name(sid, buf);
 	return 0;
 }
 
 
 static int init() {
-    snd_mixer_selem_id_alloca(&sid);
+	snd_mixer_selem_id_t *sid;
+	snd_mixer_t *handle = NULL;
 
-    if (parse_simple_id(CONTROL_NAME, sid)) {
-        fprintf(stderr, "Wrong control identifier.\n");
-        return 1;
-    }
+	snd_mixer_selem_id_alloca(&sid);
 
-    if (snd_mixer_open(&handle, 0) < 0) {
-        fprintf(stderr, "Mixer open error.\n");
-        return 1;
-    }
+	if (parse_simple_id(CONTROL_NAME, sid)) {
+		fprintf(stderr, "Wrong control identifier.\n");
+		return 1;
+	}
 
-    if (snd_mixer_attach(handle, card) < 0) {
-        fprintf(stderr, "Mixer attach error.\n");
-        snd_mixer_close(handle);
-        handle = NULL;
-        return 1;
-    }
+	if (snd_mixer_open(&handle, 0) < 0) {
+		fprintf(stderr, "Mixer open error.\n");
+		return 1;
+	}
 
-    if (snd_mixer_selem_register(handle, NULL, NULL) < 0) {
-        fprintf(stderr, "Mixer register error.\n");
-        snd_mixer_close(handle);
-        handle = NULL;
-        return 1;
-    }
+	if (snd_mixer_attach(handle, card) < 0) {
+		fprintf(stderr, "Mixer attach error.\n");
+		snd_mixer_close(handle);
+		return 1;
+	}
 
-    if (snd_mixer_load(handle) < 0) {
-        fprintf(stderr, "Mixer load error.\n");
-        snd_mixer_close(handle);
-        handle = NULL;
-        return 1;
-    }
+	if (snd_mixer_selem_register(handle, NULL, NULL) < 0) {
+		fprintf(stderr, "Mixer register error.\n");
+		snd_mixer_close(handle);
+		return 1;
+	}
 
-    elem = snd_mixer_find_selem(handle, sid);
-    if (!elem) {
-        fprintf(stderr, "Unable to find control.\n");
-        snd_mixer_close(handle);
-        handle = NULL;
-        return 1;
-    }
+	if (snd_mixer_load(handle) < 0) {
+		fprintf(stderr, "Mixer load error.\n");
+		snd_mixer_close(handle);
+		return 1;
+	}
 
-    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+	elem = snd_mixer_find_selem(handle, sid);
+	if (!elem) {
+		fprintf(stderr, "Unable to find control.\n");
+		snd_mixer_close(handle);
+		return 1;
+	}
 
-    inited=1;
-    return 0;
+	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+
+	return 0;
 }
 
 
 static void setVolume(long vol) {
-    if (!inited) init();
+	long value = vol;
 
-    long value = vol;
-    if (snd_mixer_selem_set_playback_volume_all(elem, value)) {
-        fprintf(stderr, "Unable to set volume.\n");
-    }
+	if (snd_mixer_selem_set_playback_volume_all(elem, value)) {
+		fprintf(stderr, "Unable to set volume.\n");
+	}
 }
 
 
 static long getVolume() {
-    if (!inited) init();
+	long value;
 
-    long value;
-    if (snd_mixer_selem_get_playback_volume(elem, 0, &value)) {
-        fprintf(stderr, "Unable to read volume.\n");
-        return -1;
-    }
+	if (snd_mixer_selem_get_playback_volume(elem, 0, &value)) {
+		fprintf(stderr, "Unable to read volume.\n");
+		return -1;
+	}
 
-    return value;
+	return value;
 }
 
 
 void vol_down(int event_value) {
-    long cur = getVolume();
-    if (cur > STEP_VALUE-1)
-      setVolume(cur - STEP_VALUE);
+	if (!max) init();
+
+	// If the button has been released, there's nothing to do.
+	if (event_value == 0)
+		return;
+
+	// If the button has just been pressed, we retrieve
+	// the latest volume from ALSA
+	if (event_value == 1)
+		current = getVolume();
+
+	if (current - STEP_VALUE <= min)
+	  current = min;
+
+	else
+	  current -= STEP_VALUE;
+
+	setVolume(current);
 }
 
 void vol_up(int event_value) {
-    long cur = getVolume();
-    if (cur < max-min - STEP_VALUE+1)
-      setVolume(cur + STEP_VALUE);
+	if (!max) init();
+
+	// If the button has been released, there's nothing to do.
+	if (event_value == 0)
+		return;
+
+	// If the button has just been pressed, we retrieve
+	// the latest volume from ALSA
+	if (event_value == 1)
+		current = getVolume();
+
+	if (current + STEP_VALUE >= max)
+	  current = max;
+
+	else
+	  current += STEP_VALUE;
+
+	setVolume(current);
 }
