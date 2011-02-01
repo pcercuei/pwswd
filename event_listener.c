@@ -142,10 +142,12 @@ static void execute(enum event_type event, int value) {
               switchmode(MOUSE);
             break;
         case tvout:
+            if (value == 2) return;
             str = "tvout";
 			tv_out();
             break;
         case screenshot:
+            if (value == 2) return;
             str = "screenshot";
             do_screenshot();
             break;
