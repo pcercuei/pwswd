@@ -3,6 +3,7 @@
 
 #include "reboot_backend.h"
 
-void do_reboot() {
-    execlp("/sbin/reboot", "/sbin/reboot", (char*)NULL);
+void do_reboot()
+{
+	execlp("/sbin/reboot", "/sbin/reboot", (char*)NULL);
 }

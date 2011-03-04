@@ -6,25 +6,25 @@
 
 
 enum event_type {
-    reboot, poweroff, suspend, hold,
-    volup, voldown,
-    brightup, brightdown,
-    mouse, tvout, screenshot,
+	reboot, poweroff, suspend, hold,
+	volup, voldown,
+	brightup, brightdown,
+	mouse, tvout, screenshot,
 };
 
 
 struct button {
-    const char *name;
-    unsigned short id;
-    unsigned short state;
+	const char *name;
+	unsigned short id;
+	unsigned short state;
 };
 
 
 struct shortcut {
-    enum event_type action;
-    struct button * keys[NB_MAX_KEYS];
-    int nb_keys;
-    struct shortcut *prev;
+	enum event_type action;
+	struct button * keys[NB_MAX_KEYS];
+	int nb_keys;
+	struct shortcut *prev;
 };
 
 
