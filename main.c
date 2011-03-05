@@ -1,6 +1,10 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "shortcut_handler.h"
 #include "event_listener.h"
@@ -12,22 +16,36 @@
 
 #define USAGE() printf("Usage:\n\t" PROGNAME " [-f conf_file]\n\n")
 
-static const char *filename = NULL;
-
 
 int main(int argc, char **argv)
 {
+	const char *filename = NULL;
+
 	if (argc > 1) {
 		if (strcmp(argv[1], "-f") || (argc < 3)) {
 			USAGE();
 			return 1;
 		}
-
 		filename = argv[2];
-	} else {
-		//filename = "/etc/" PROGNAME ".conf";
-		USAGE();
-		return 1;
+	}
+	
+	else {
+		struct stat st;
+		filename = "/etc/local/" PROGNAME ".conf";
+
+		if (stat(filename, &st) == -1) {
+			filename = "/etc/" PROGNAME ".conf";
+
+			if (stat(filename, &st) == -1) {
+				printf("pwswd: Unable to find a configuration file.\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		if (!S_ISREG(st.st_mode)) {
+			printf("pwswd: The configuration file is not a regular file.\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	int nb_shortcuts;
