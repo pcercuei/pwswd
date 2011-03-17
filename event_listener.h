@@ -27,5 +27,6 @@
 
 
 int do_listen();
+int power_button_is_pressed(void);
 
 #endif // EVENT_LISTENER_H

@@ -57,6 +57,7 @@ static FILE *uinput = NULL;
 
 static int grabbed = 0;
 
+static int power_button_pressed = 0;
 
 static void switchmode(enum _mode new)
 {
@@ -108,8 +109,9 @@ static void execute(enum event_type event, int value)
 			do_poweroff();
 			break;
 		case suspend:
-			if (value == 2) return;
+			if (value != 1) return;
 			str = "suspend";
+			do_suspend();
 			break;
 		case hold:
 			if (value == 2) return;
@@ -206,6 +208,11 @@ static int inject(unsigned short type, unsigned short code, int value)
 }
 
 
+int power_button_is_pressed(void)
+{
+	return power_button_pressed;
+}
+
 int do_listen()
 {
 	open_fds(EVENT_FILENAME, UINPUT_FILENAME);
@@ -220,7 +227,6 @@ int do_listen()
 
 	// booleans
 	int key_combo, changed;
-	int power_button_pressed = 0;
 	int read;
 
 	for(;;) {

@@ -8,6 +8,7 @@ OBJS += backend/poweroff/poweroff.o
 OBJS += backend/reboot/reboot.o
 OBJS += backend/screenshot/screenshot.o
 OBJS += backend/tvout/tvout.o
+OBJS += backend/suspend/suspend.o
 
 
 CROSS=mipsel-linux-uclibc-
