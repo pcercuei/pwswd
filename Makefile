@@ -1,7 +1,6 @@
+BINARY:=pwswd
 
-TARGET=pwswd
-OBJS=event_listener.o shortcut_handler.o main.o
-
+OBJS:=event_listener.o shortcut_handler.o main.o
 OBJS += backend/brightness/brightness.o
 OBJS += backend/volume/volume.o
 OBJS += backend/poweroff/poweroff.o
@@ -11,24 +10,25 @@ OBJS += backend/tvout/tvout.o
 OBJS += backend/suspend/suspend.o
 
 
-CROSS=mipsel-linux-uclibc-
-CC=$(CROSS)gcc
-STRIP=$(CROSS)objcopy
+CROSS:=mipsel-linux-uclibc-
+CC:=$(CROSS)gcc
 
 
-CFLAGS=-Wall -O2
-INCLUDES=-I/opt/mipsel-linux-uclibc/usr/include
-LIBS=-lasound -lpng
+CFLAGS:=-Wall -O2
+INCLUDES:=
+LDFLAGS:=-s
+LIBS:=-lasound -lpng
 
 
-all: $(OBJS)
-	$(CC) $(OBJS) $(LIBS) -o $(TARGET)
-	$(STRIP) -S $(TARGET)
+.PHONY: all clean
 
+all: $(BINARY)
+
+$(BINARY): $(OBJS)
+	$(CC) $(addprefix -Wl,,$(LDFLAGS)) -o $@ $(OBJS) $(LIBS)
+
+$(OBJS): %.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
 
 clean:
-	-rm -rf $(TARGET) $(OBJS)
-
-
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+	rm -f $(BINARY) $(OBJS)
