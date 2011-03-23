@@ -60,7 +60,10 @@ void bright_up(int event_value) {
 		current_value = get_current_value(dev_file);
 	}
 
-	if (current_value + STEP_VALUE >= max_brightness)
+	if (current_value == max_brightness)
+	  return;
+
+	else if (current_value + STEP_VALUE >= max_brightness)
 	  current_value = max_brightness;
 
 	else
@@ -84,7 +87,10 @@ void bright_down(int event_value) {
 		current_value = get_current_value(dev_file);
 	}
 
-	if (current_value - STEP_VALUE <= MIN_BRIGHTNESS)
+	if (current_value == MIN_BRIGHTNESS)
+	  return;
+
+	else if (current_value - STEP_VALUE <= MIN_BRIGHTNESS)
 	  current_value = MIN_BRIGHTNESS;
 
 	else
