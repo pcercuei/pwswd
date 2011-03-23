@@ -144,7 +144,10 @@ void vol_down(int event_value) {
 	if (event_value == 1)
 		current = getVolume();
 
-	if (current - STEP_VALUE <= min)
+	if (current == min)
+	  return;
+
+	else if (current - STEP_VALUE <= min)
 	  current = min;
 
 	else
@@ -165,7 +168,10 @@ void vol_up(int event_value) {
 	if (event_value == 1)
 		current = getVolume();
 
-	if (current + STEP_VALUE >= max)
+	if (current == max)
+	  return;
+
+	else if (current + STEP_VALUE >= max)
 	  current = max;
 
 	else
