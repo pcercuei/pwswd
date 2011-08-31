@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <png.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #define XRES 320
@@ -13,7 +14,6 @@
 #define PIXELTYPE uint16_t
 
 #define FRAMEBUFFER "/dev/fb0"
-#define SCREENSHOTS "/card/screenshot%i.png"
 
 typedef PIXELTYPE pixel_t;
 
@@ -93,10 +93,10 @@ static int init_png(struct screenshot_data * data)
 static void * screenshot_thd(void* p)
 {
 	unsigned int i, n;
-	char pngfilename[0x20];
 	png_bytep row_pointers[YRES];
 	pixel_t  *buffer;
 	FILE *fbdev;
+	char *screenshot_fn, *png_fn, *home;
 
 	struct screenshot_data *data = (struct screenshot_data*)p;
 
@@ -134,13 +134,39 @@ static void * screenshot_thd(void* p)
 		pthread_setschedparam(my_thread, policy, &params);
 	  }
 
+	home = getenv("HOME");
+	if (!home) {
+		fprintf(stderr, "$HOME is not defined.\n");
+		free(data->picture);
+		free(data);
+		return NULL;
+	}
+
+	/* 32 = strlen("/screenshots") + strlen("/screenshot%03d.png") +1
+	 * 31 = strlen("/screenshots") + strlen("/screenshotXXX.png") +1 */
+	screenshot_fn = malloc(strlen(home) + 32);
+	png_fn = malloc(strlen(home) + 31);
+	if (!screenshot_fn || !png_fn) {
+		fprintf(stderr, "Unable to allocate memory for screenshot filename string.\n");
+		if (screenshot_fn) free(screenshot_fn);
+		free(data->picture);
+		free(data);
+	}
+
+	strcpy(screenshot_fn, home);
+	strcat(screenshot_fn, "/screenshots");
+	mkdir(screenshot_fn, 0755);
+	strcat(screenshot_fn, "/screenshot\%03d.png");
+
 	// Try to find a file on which the data is to be saved.
 	for (;;) {
 		n = getNumber();
-		sprintf(pngfilename, SCREENSHOTS, n);
-		data->pngfile = fopen(pngfilename, "ab+");
+		sprintf(png_fn, screenshot_fn, n);
+		data->pngfile = fopen(png_fn, "ab+");
 		if (!data->pngfile) {
 			fprintf(stderr, "Unable to open file for write.\n");
+			free(png_fn);
+			free(screenshot_fn);
 			free(data->picture);
 			free(data);
 			return NULL;
@@ -153,12 +179,15 @@ static void * screenshot_thd(void* p)
 		fclose(data->pngfile);
 	}
 
+	free(screenshot_fn);
+
 	rewind(data->pngfile);
 
 	// Init the PNG stuff, and write the header
 	if (init_png(data)) {
 		fprintf(stderr, "Unable to init PNG context.\n");
 		fclose(data->pngfile);
+		free(png_fn);
 		free(data->picture);
 		free(data);
 		return NULL;
@@ -176,7 +205,8 @@ static void * screenshot_thd(void* p)
 	png_write_end(data->png, data->info);
 	png_destroy_write_struct(&data->png, &data->info);
 
-	printf("Wrote to " SCREENSHOTS "\n", n);
+	printf("Wrote to %s\n", png_fn);
+	free(png_fn);
 
 	if (data->pngfile)
 	  fclose(data->pngfile);
