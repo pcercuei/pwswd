@@ -9,11 +9,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "../backends.h"
+
 #define XRES 320
 #define YRES 240
 #define PIXELTYPE uint16_t
-
-#define FRAMEBUFFER "/dev/fb0"
 
 typedef PIXELTYPE pixel_t;
 

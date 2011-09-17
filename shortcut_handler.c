@@ -70,6 +70,8 @@ int read_conf_file(const char *filename)
 		  newone->action = screenshot;
 		else if (!strcmp(word, "suspend"))
 		  newone->action = suspend;
+		else if (!strcmp(word, "kill"))
+		  newone->action = kill;
 		else {
 			fclose(conf);
 			shortcut_free(newone);

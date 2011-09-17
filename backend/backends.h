@@ -9,5 +9,8 @@
 #include "screenshot/screenshot_backend.h"
 #include "tvout/tvout_backend.h"
 #include "suspend/suspend_backend.h"
+#include "kill/kill_backend.h"
+
+#define FRAMEBUFFER "/dev/fb0"
 
 #endif

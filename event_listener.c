@@ -155,6 +155,11 @@ static void execute(enum event_type event, int value)
 			str = "screenshot";
 			do_screenshot();
 			break;
+		case kill:
+			if (value == 2) return;
+			str = "kill";
+			do_kill();
+			break;
 		default:
 			return;
 	}

@@ -10,6 +10,7 @@ enum event_type {
 	volup, voldown,
 	brightup, brightdown,
 	mouse, tvout, screenshot,
+	kill,
 };
 
 
