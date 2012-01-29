@@ -11,8 +11,8 @@ OBJS += backend/suspend/suspend.o
 OBJS += backend/kill/kill.o
 
 
-CROSS:=mipsel-linux-uclibc-
-CC:=$(CROSS)gcc
+CROSS_COMPILE ?= mipsel-linux-
+CC := $(CROSS_COMPILE)gcc
 
 
 CFLAGS:=-Wall -O2
