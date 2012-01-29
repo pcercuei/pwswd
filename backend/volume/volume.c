@@ -5,13 +5,14 @@
 
 #include "vol_backend.h"
 
-#define CONTROL_NAME "SoftMaster"
+#define SOFTVOL_NAME "SoftMaster"
+#define DAC_NAME "Output Mixer DAC"
 
 #define STEP_VALUE 10
 
 static char card[] = "default";
 
-static snd_mixer_elem_t *elem;
+static snd_mixer_elem_t *elem, *dac_elem;
 static long min = 0, max = 0;
 static long current;
 
@@ -70,7 +71,7 @@ static int init() {
 
 	snd_mixer_selem_id_alloca(&sid);
 
-	if (parse_simple_id(CONTROL_NAME, sid)) {
+	if (parse_simple_id(SOFTVOL_NAME, sid)) {
 		fprintf(stderr, "Wrong control identifier.\n");
 		return 1;
 	}
@@ -106,6 +107,19 @@ static int init() {
 	}
 
 	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+
+	if (parse_simple_id(DAC_NAME, sid)) {
+		fprintf(stderr, "Wrong control identifier.\n");
+		snd_mixer_close(handle);
+		return 1;
+	}
+
+	dac_elem = snd_mixer_find_selem(handle, sid);
+	if (!dac_elem) {
+		fprintf(stderr, "Unable to find DAC switch.\n");
+		snd_mixer_close(handle);
+		return 1;
+	}
 
 	return 0;
 }
@@ -147,8 +161,11 @@ void vol_down(int event_value) {
 	if (current == min)
 	  return;
 
-	else if (current - STEP_VALUE <= min)
-	  current = min;
+	else if (current - STEP_VALUE <= min) {
+		current = min;
+		snd_mixer_selem_set_playback_switch(dac_elem,
+					SND_MIXER_SCHN_MONO, 0);
+	}
 
 	else
 	  current -= STEP_VALUE;
@@ -165,8 +182,12 @@ void vol_up(int event_value) {
 
 	// If the button has just been pressed, we retrieve
 	// the latest volume from ALSA
-	if (event_value == 1)
+	if (event_value == 1) {
 		current = getVolume();
+		if (current == min)
+			snd_mixer_selem_set_playback_switch(dac_elem,
+						SND_MIXER_SCHN_MONO, 1);
+	}
 
 	if (current == max)
 	  return;
