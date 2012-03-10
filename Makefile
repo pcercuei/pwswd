@@ -1,35 +1,30 @@
-BINARY:=pwswd
 
-OBJS:=event_listener.o shortcut_handler.o main.o
-OBJS += backend/brightness/brightness.o
-OBJS += backend/volume/volume.o
-OBJS += backend/poweroff/poweroff.o
-OBJS += backend/reboot/reboot.o
-OBJS += backend/screenshot/screenshot.o
-OBJS += backend/tvout/tvout.o
-OBJS += backend/suspend/suspend.o
-OBJS += backend/kill/kill.o
-
+TARGET = pwswd
 
 CROSS_COMPILE ?= mipsel-linux-
-CC := $(CROSS_COMPILE)gcc
+CC = $(CROSS_COMPILE)gcc
 
+CFLAGS = -Wall -O2
+LDFLAGS = -s
+LIBS = -lasound -lpng
 
-CFLAGS:=-Wall -O2
-INCLUDES:=
-LDFLAGS:=-s
-LIBS:=-lasound -lpng
+OBJS = event_listener.o shortcut_handler.o main.o \
+	backend/brightness/brightness.o \
+	backend/volume/volume.o \
+	backend/poweroff/poweroff.o \
+	backend/reboot/reboot.o \
+	backend/screenshot/screenshot.o \
+	backend/tvout/tvout.o \
+	backend/suspend/suspend.o \
+	backend/kill/kill.o
 
 
 .PHONY: all clean
 
-all: $(BINARY)
+all: $(TARGET)
 
-$(BINARY): $(OBJS)
+$(TARGET): $(OBJS)
 	$(CC) $(addprefix -Wl,,$(LDFLAGS)) -o $@ $(OBJS) $(LIBS)
 
-$(OBJS): %.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
-
 clean:
-	rm -f $(BINARY) $(OBJS)
+	rm -f $(TARGET) $(OBJS)
