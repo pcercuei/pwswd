@@ -6,7 +6,7 @@ CC = $(CROSS_COMPILE)gcc
 
 CFLAGS = -Wall -O2
 LDFLAGS = -s
-LIBS = -lasound -lpng
+LIBS = -lasound -lpng -lpthread
 
 OBJS = event_listener.o shortcut_handler.o main.o \
 	backend/brightness/brightness.o \
