@@ -13,23 +13,45 @@
 #define PROGNAME "pwswd"
 #endif
 
+#ifndef EVENT_FILENAME
+#define EVENT_FILENAME  "/dev/event0"
+#endif
 
-#define USAGE() printf("Usage:\n\t" PROGNAME " [-f conf_file]\n\n")
+#ifndef UINPUT_FILENAME
+#define UINPUT_FILENAME "/dev/uinput"
+#endif
+
+
+#define USAGE() printf("Usage:\n\t" PROGNAME " [-f config file] [-e event interface] [-u uinput interface]\n\n")
 
 
 int main(int argc, char **argv)
 {
-	const char *filename = NULL;
+	const char *filename = NULL,
+		  *event = NULL, *uinput = NULL;
+	size_t i;
 
-	if (argc > 1) {
-		if (strcmp(argv[1], "-f") || (argc < 3)) {
+	for (i = 1; i < argc; i++) {
+		if (argc > i + 1) {
+			if (!strcmp(argv[i], "-f"))
+				filename = argv[i+1];
+			else if (!strcmp(argv[i], "-e"))
+				event = argv[i+1];
+			else if (!strcmp(argv[i], "-u"))
+				uinput = argv[i+1];
+			else {
+				USAGE();
+				return 1;
+			}
+
+			i++;
+		} else {
 			USAGE();
 			return 1;
 		}
-		filename = argv[2];
 	}
 	
-	else {
+	if (!filename) {
 		struct stat st;
 		filename = "/etc/local/" PROGNAME ".conf";
 
@@ -47,6 +69,12 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	if (!event)
+		event = EVENT_FILENAME;
+
+	if (!uinput)
+		uinput = UINPUT_FILENAME;
 
 	int nb_shortcuts;
 	switch(nb_shortcuts = read_conf_file(filename)) {
@@ -66,7 +94,7 @@ int main(int argc, char **argv)
 			break;
 	}
 
-	do_listen();
+	do_listen(event, uinput);
 	deinit();
 	return 0;
 }

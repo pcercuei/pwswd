@@ -11,9 +11,6 @@
 #include "shortcut_handler.h"
 #include "backend/backends.h"
 
-#define EVENT_FILENAME  "/dev/event0"
-#define UINPUT_FILENAME "/dev/uinput"
-
 #ifdef DEBUG
 #define DEBUGMSG(msg...) printf(msg)
 #else
@@ -215,9 +212,9 @@ int power_button_is_pressed(void)
 	return power_button_pressed;
 }
 
-int do_listen()
+int do_listen(const char *event, const char *uinput)
 {
-	open_fds(EVENT_FILENAME, UINPUT_FILENAME);
+	open_fds(event, uinput);
 
 	struct shortcut *tmp;
 	const struct shortcut *shortcuts = getShortcuts();
