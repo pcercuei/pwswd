@@ -26,13 +26,11 @@ static struct uinput_user_dev uud = {
 	.id = { BUS_USB, 1,1,1 },
 };
 
-
 enum _mode {
 	NORMAL, MOUSE, HOLD
 };
 
 static enum _mode mode = NORMAL;
-
 
 struct button buttons[NB_BUTTONS] = {
 	_BUTTON(UP),
@@ -56,7 +54,6 @@ static FILE *event0 = NULL;
 static FILE *uinput = NULL;
 
 static int grabbed = 0;
-
 static int power_button_pressed = 0;
 
 static void switchmode(enum _mode new)
@@ -234,8 +231,7 @@ int do_listen()
 	int key_combo, changed;
 	int read;
 
-	for(;;) {
-
+	while(1) {
 		// We wait for an event.
 		// On mouse mode, this call does not block.
 		read = fread(&my_event, sizeof(struct input_event), 1, event0);
@@ -291,7 +287,6 @@ int do_listen()
 				}
 				continue;
 			}
-
 		}
 
 		// In case we are in the "mouse" mode, handle mouse emulation.
@@ -311,13 +306,6 @@ int do_listen()
 				}
 
 				switch(my_event.code) {
-					case BUTTON_LEFT:
-					case BUTTON_RIGHT:
-					case BUTTON_DOWN:
-					case BUTTON_UP:
-						// We don't care, it will be handled sooner or later.
-						continue;
-
 					case BUTTON_A:
 						if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
 						  continue;
@@ -348,8 +336,6 @@ int do_listen()
 					default:
 						continue;
 				}
-
-
 			}
 
 			// No event this time
