@@ -15,6 +15,7 @@ static char card[] = "default";
 static snd_mixer_elem_t *elem, *dac_elem;
 static long min = 0, max = 0;
 static long current;
+static int disactivated;
 
 static int parse_simple_id(const char *str, snd_mixer_selem_id_t *sid)
 {
@@ -147,7 +148,14 @@ static long getVolume() {
 
 
 void vol_down(int event_value) {
-	if (!max) init();
+	if (!max && !disactivated) {
+		disactivated = init();
+		if (disactivated)
+			fprintf(stderr, "Unable to init volume backend! Will be disactivated.\n");
+	}
+
+	if (disactivated)
+		return;
 
 	// If the button has been released, there's nothing to do.
 	if (event_value == 0)
@@ -174,7 +182,14 @@ void vol_down(int event_value) {
 }
 
 void vol_up(int event_value) {
-	if (!max) init();
+	if (!max && !disactivated) {
+		disactivated = init();
+		if (disactivated)
+			fprintf(stderr, "Unable to init volume backend! Will be disactivated.\n");
+	}
+
+	if (disactivated)
+		return;
 
 	// If the button has been released, there's nothing to do.
 	if (event_value == 0)
