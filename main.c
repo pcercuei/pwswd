@@ -8,6 +8,7 @@
 
 #include "shortcut_handler.h"
 #include "event_listener.h"
+#include "backend/backends.h"
 
 #ifndef PROGNAME
 #define PROGNAME "pwswd"
@@ -21,6 +22,13 @@
 #define UINPUT_FILENAME "/dev/uinput"
 #endif
 
+#ifndef SOFTVOL_NAME
+#define SOFTVOL_NAME "SoftMaster"
+#endif
+
+#ifndef DAC_NAME
+#define DAC_NAME "Output Mixer DAC"
+#endif
 
 #define USAGE() printf("Usage:\n\t" PROGNAME " [-f config file] [-e event interface] [-u uinput interface]\n\n")
 
@@ -93,6 +101,9 @@ int main(int argc, char **argv)
 		default:
 			break;
 	}
+
+	if (vol_init(SOFTVOL_NAME, DAC_NAME))
+		fprintf(stderr, "Unable to init volume backend\n");
 
 	do_listen(event, uinput);
 	deinit();

@@ -5,9 +5,6 @@
 
 #include "vol_backend.h"
 
-#define SOFTVOL_NAME "SoftMaster"
-#define DAC_NAME "Output Mixer DAC"
-
 #define STEP_VALUE 10
 
 static char card[] = "default";
@@ -15,7 +12,7 @@ static char card[] = "default";
 static snd_mixer_elem_t *elem, *dac_elem;
 static long min = 0, max = 0;
 static long current;
-static int disactivated;
+static int disactivated = 1;
 
 static int parse_simple_id(const char *str, snd_mixer_selem_id_t *sid)
 {
@@ -66,13 +63,13 @@ _set:
 }
 
 
-static int init() {
+int vol_init(const char *mixer, const char *dac) {
 	snd_mixer_selem_id_t *sid;
 	snd_mixer_t *handle = NULL;
 
 	snd_mixer_selem_id_alloca(&sid);
 
-	if (parse_simple_id(SOFTVOL_NAME, sid)) {
+	if (parse_simple_id(mixer, sid)) {
 		fprintf(stderr, "Wrong control identifier.\n");
 		return 1;
 	}
@@ -109,19 +106,19 @@ static int init() {
 
 	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
 
-	if (parse_simple_id(DAC_NAME, sid)) {
-		fprintf(stderr, "Wrong control identifier.\n");
-		snd_mixer_close(handle);
-		return 1;
+	if (dac) {
+		if (parse_simple_id(dac, sid)) {
+			fprintf(stderr, "Wrong control identifier.\n");
+			snd_mixer_close(handle);
+			return 1;
+		}
+
+		dac_elem = snd_mixer_find_selem(handle, sid);
+		if (!dac_elem)
+			fprintf(stderr, "Unable to find DAC switch.\n");
 	}
 
-	dac_elem = snd_mixer_find_selem(handle, sid);
-	if (!dac_elem) {
-		fprintf(stderr, "Unable to find DAC switch.\n");
-		snd_mixer_close(handle);
-		return 1;
-	}
-
+	disactivated = 0;
 	return 0;
 }
 
@@ -148,12 +145,6 @@ static long getVolume() {
 
 
 void vol_down(int event_value) {
-	if (!max && !disactivated) {
-		disactivated = init();
-		if (disactivated)
-			fprintf(stderr, "Unable to init volume backend! Will be disactivated.\n");
-	}
-
 	if (disactivated)
 		return;
 
@@ -171,8 +162,9 @@ void vol_down(int event_value) {
 
 	else if (current - STEP_VALUE <= min) {
 		current = min;
-		snd_mixer_selem_set_playback_switch(dac_elem,
-					SND_MIXER_SCHN_MONO, 0);
+		if (dac_elem)
+			snd_mixer_selem_set_playback_switch(dac_elem,
+						SND_MIXER_SCHN_MONO, 0);
 	}
 
 	else
@@ -182,12 +174,6 @@ void vol_down(int event_value) {
 }
 
 void vol_up(int event_value) {
-	if (!max && !disactivated) {
-		disactivated = init();
-		if (disactivated)
-			fprintf(stderr, "Unable to init volume backend! Will be disactivated.\n");
-	}
-
 	if (disactivated)
 		return;
 
@@ -199,7 +185,7 @@ void vol_up(int event_value) {
 	// the latest volume from ALSA
 	if (event_value == 1) {
 		current = getVolume();
-		if (current == min)
+		if (dac_elem && current == min)
 			snd_mixer_selem_set_playback_switch(dac_elem,
 						SND_MIXER_SCHN_MONO, 1);
 	}
