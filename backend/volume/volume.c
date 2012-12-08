@@ -5,12 +5,10 @@
 
 #include "vol_backend.h"
 
-#define STEP_VALUE 10
-
 static char card[] = "default";
 
 static snd_mixer_elem_t *elem, *dac_elem;
-static long min = 0, max = 0;
+static long min, max, step;
 static long current;
 static int disactivated = 1;
 
@@ -105,6 +103,10 @@ int vol_init(const char *mixer, const char *dac) {
 	}
 
 	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+	/* 32 steps */
+	step = (max - min) / 32;
+	if (!step)
+		step = 1;
 
 	if (dac) {
 		if (parse_simple_id(dac, sid)) {
@@ -160,7 +162,7 @@ void vol_down(int event_value) {
 	if (current == min)
 	  return;
 
-	else if (current - STEP_VALUE <= min) {
+	else if (current - step <= min) {
 		current = min;
 		if (dac_elem)
 			snd_mixer_selem_set_playback_switch(dac_elem,
@@ -168,7 +170,7 @@ void vol_down(int event_value) {
 	}
 
 	else
-	  current -= STEP_VALUE;
+	  current -= step;
 
 	setVolume(current);
 }
@@ -193,11 +195,11 @@ void vol_up(int event_value) {
 	if (current == max)
 	  return;
 
-	else if (current + STEP_VALUE >= max)
+	else if (current + step >= max)
 	  current = max;
 
 	else
-	  current += STEP_VALUE;
+	  current += step;
 
 	setVolume(current);
 }
