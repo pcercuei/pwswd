@@ -22,20 +22,17 @@
 #define UINPUT_FILENAME "/dev/uinput"
 #endif
 
-#ifndef SOFTVOL_NAME
-#define SOFTVOL_NAME "SoftMaster"
+#ifndef DEFAULT_MIXER
+#define DEFAULT_MIXER "SoftMaster"
 #endif
 
-#ifndef DAC_NAME
-#define DAC_NAME "Output Mixer DAC"
-#endif
-
-#define USAGE() printf("Usage:\n\t" PROGNAME " [-f config file] [-e event interface] [-u uinput interface]\n\n")
+#define USAGE() printf("Usage:\n\t" PROGNAME " [-f config file] [-e event interface] [-u uinput interface] [-m mixer device]\n\n")
 
 
 int main(int argc, char **argv)
 {
 	const char *filename = NULL,
+		  *mixer = NULL, *dac = NULL,
 		  *event = NULL, *uinput = NULL;
 	size_t i;
 
@@ -47,6 +44,10 @@ int main(int argc, char **argv)
 				event = argv[i+1];
 			else if (!strcmp(argv[i], "-u"))
 				uinput = argv[i+1];
+			else if (!strcmp(argv[i], "-m"))
+				mixer = argv[i+1];
+			else if (!strcmp(argv[i], "-d"))
+				dac = argv[i+1];
 			else {
 				USAGE();
 				return 1;
@@ -84,6 +85,9 @@ int main(int argc, char **argv)
 	if (!uinput)
 		uinput = UINPUT_FILENAME;
 
+	if (!mixer)
+		mixer = DEFAULT_MIXER;
+
 	int nb_shortcuts;
 	switch(nb_shortcuts = read_conf_file(filename)) {
 		case -1:
@@ -102,7 +106,7 @@ int main(int argc, char **argv)
 			break;
 	}
 
-	if (vol_init(SOFTVOL_NAME, DAC_NAME))
+	if (vol_init(mixer, dac))
 		fprintf(stderr, "Unable to init volume backend\n");
 
 	do_listen(event, uinput);
