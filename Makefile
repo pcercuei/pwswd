@@ -10,14 +10,14 @@ TARGET = pwswd
 CROSS_COMPILE ?= mipsel-linux-
 CC = $(CROSS_COMPILE)gcc
 
-DEFAULT_MIXER ?= PCM
+DEFAULT_MIXER ?= "PCM"
 
 LIBS =
 OBJS = event_listener.o shortcut_handler.o main.o
 
 ifdef BACKEND_VOLUME
 	OBJS += backend/volume/volume.o
-	CFLAGS += -DBACKEND_VOLUME -DDEFAULT_MIXER=$(DEFAULT_MIXER)
+	CFLAGS += -DBACKEND_VOLUME -DDEFAULT_MIXER="$(DEFAULT_MIXER)"
 	LIBS += -lasound
 endif
 
