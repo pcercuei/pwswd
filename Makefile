@@ -7,7 +7,6 @@ include config-$(CONFIG).mk
 
 TARGET = pwswd
 
-CROSS_COMPILE ?= mipsel-linux-
 CC = $(CROSS_COMPILE)gcc
 
 DEFAULT_MIXER ?= "\"PCM\""
