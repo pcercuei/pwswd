@@ -10,7 +10,7 @@ TARGET = pwswd
 CROSS_COMPILE ?= mipsel-linux-
 CC = $(CROSS_COMPILE)gcc
 
-DEFAULT_MIXER ?= "PCM"
+DEFAULT_MIXER ?= "\"PCM\""
 
 LIBS =
 OBJS = event_listener.o shortcut_handler.o main.o
