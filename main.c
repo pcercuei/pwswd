@@ -29,7 +29,8 @@
 static const char * const usage = "Usage:\n\t " PROGNAME
 	"[-f config file] [-e event interface] [-u uinput interface]"
 #ifdef BACKEND_VOLUME
-	" [-m mixer device]"
+	" [-m mixer control]"
+	" [-d DAC control]"
 #endif
 	"\n\n";
 
