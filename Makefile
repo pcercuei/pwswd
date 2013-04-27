@@ -17,7 +17,7 @@ OBJS = event_listener.o shortcut_handler.o main.o
 
 ifdef BACKEND_VOLUME
 	OBJS += backend/volume/volume.o
-	CFLAGS += -DBACKEND_VOLUME -DDEFAULT_MIXER="$(DEFAULT_MIXER)"
+	CFLAGS += -DBACKEND_VOLUME -DDEFAULT_MIXER=$(DEFAULT_MIXER)
 	LIBS += -lasound
 endif
 
