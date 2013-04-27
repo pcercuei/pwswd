@@ -1,22 +1,59 @@
+ifeq ($(CONFIG),)
+CONFIGS:=$(foreach CFG,$(wildcard config-*.mk),$(CFG:config-%.mk=%))
+$(error Please specify CONFIG, possible values: $(CONFIGS))
+endif
+
+include config-$(CONFIG).mk
 
 TARGET = pwswd
 
 CROSS_COMPILE ?= mipsel-linux-
 CC = $(CROSS_COMPILE)gcc
 
-CFLAGS = -Wall -O2
-LDFLAGS = -s
-LIBS = -lasound -lpng -lpthread
+LIBS =
+OBJS = event_listener.o shortcut_handler.o main.o
 
-OBJS = event_listener.o shortcut_handler.o main.o \
-	backend/brightness/brightness.o \
-	backend/volume/volume.o \
-	backend/poweroff/poweroff.o \
-	backend/reboot/reboot.o \
-	backend/screenshot/screenshot.o \
-	backend/tvout/tvout.o \
-	backend/suspend/suspend.o \
-	backend/kill/kill.o
+ifdef BACKEND_VOLUME
+	OBJS += backend/volume/volume.o
+	CFLAGS += -DBACKEND_VOLUME
+	LIBS += -lasound
+endif
+
+ifdef BACKEND_BRIGHTNESS
+	OBJS += backend/brightness/brightness.o
+	CFLAGS += -DBACKEND_BRIGHTNESS
+endif
+
+ifdef BACKEND_POWEROFF
+	OBJS += backend/poweroff/poweroff.o
+	CFLAGS += -DBACKEND_POWEROFF
+endif
+
+ifdef BACKEND_REBOOT
+	OBJS += backend/reboot/reboot.o
+	CFLAGS += -DBACKEND_REBOOT
+endif
+
+ifdef BACKEND_SCREENSHOT
+	OBJS += backend/screenshot/screenshot.o
+	CFLAGS += -DBACKEND_SCREENSHOT
+	LIBS += -lpng -lpthread
+endif
+
+ifdef BACKEND_TVOUT
+	OBJS += backend/tvout/tvout.o
+	CFLAGS += -DBACKEND_TVOUT
+endif
+
+ifdef BACKEND_SUSPEND
+	OBJS += backend/suspend/suspend.o
+	CFLAGS += -DBACKEND_SUSPEND
+endif
+
+ifdef BACKEND_KILL
+	OBJS += backend/kill/kill.o
+	CFLAGS += -DBACKEND_KILL
+endif
 
 
 .PHONY: all clean
@@ -24,7 +61,7 @@ OBJS = event_listener.o shortcut_handler.o main.o \
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(addprefix -Wl,,$(LDFLAGS)) -o $@ $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LIBS) $^ -o $@
 
 clean:
 	rm -f $(TARGET) $(OBJS)

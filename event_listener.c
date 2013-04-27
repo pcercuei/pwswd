@@ -92,21 +92,27 @@ static void execute(enum event_type event, int value)
 {
 	char *str;
 	switch(event) {
+#ifdef BACKEND_REBOOT
 		case reboot:
 			if (value == 2) return;
 			str = "reboot";
 			do_reboot();
 			break;
+#endif
+#ifdef BACKEND_POWEROFF
 		case poweroff:
 			if (value == 2) return;
 			str = "poweroff";
 			do_poweroff();
 			break;
+#endif
+#ifdef BACKEND_SUSPEND
 		case suspend:
 			if (value != 1) return;
 			str = "suspend";
 			do_suspend();
 			break;
+#endif
 		case hold:
 			if (value == 2) return;
 			str = "hold";
@@ -115,6 +121,7 @@ static void execute(enum event_type event, int value)
 			else
 			  switchmode(HOLD);
 			break;
+#ifdef BACKEND_VOLUME
 		case volup:
 			str = "volup";
 			vol_up(value);
@@ -123,6 +130,8 @@ static void execute(enum event_type event, int value)
 			str = "voldown";
 			vol_down(value);
 			break;
+#endif
+#ifdef BACKEND_BRIGHTNESS
 		case brightup:
 			str = "brightup";
 			bright_up(value);
@@ -131,6 +140,7 @@ static void execute(enum event_type event, int value)
 			str = "brightdown";
 			bright_down(value);
 			break;
+#endif
 		case mouse:
 			if (value == 2) return;
 			str = "mouse";
@@ -139,21 +149,27 @@ static void execute(enum event_type event, int value)
 			else
 			  switchmode(MOUSE);
 			break;
+#ifdef BACKEND_TVOUT
 		case tvout:
 			if (value == 2) return;
 			str = "tvout";
 			tv_out();
 			break;
+#endif
+#ifdef BACKEND_SCREENSHOT
 		case screenshot:
 			if (value == 2) return;
 			str = "screenshot";
 			do_screenshot();
 			break;
+#endif
+#ifdef BACKEND_KILL
 		case kill:
 			if (value == 2) return;
 			str = "kill";
 			do_kill();
 			break;
+#endif
 		default:
 			return;
 	}
