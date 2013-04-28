@@ -60,13 +60,13 @@ int main(int argc, char **argv)
 #endif
 			else {
 				printf(usage);
-				return 1;
+				return EXIT_FAILURE;
 			}
 
 			i++;
 		} else {
 			printf(usage);
-			return 1;
+			return EXIT_FAILURE;
 		}
 	}
 	
@@ -79,13 +79,13 @@ int main(int argc, char **argv)
 
 			if (stat(filename, &st) == -1) {
 				printf("pwswd: Unable to find a configuration file.\n");
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			}
 		}
 
 		if (!S_ISREG(st.st_mode)) {
 			printf("pwswd: The configuration file is not a regular file.\n");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -95,22 +95,9 @@ int main(int argc, char **argv)
 	if (!uinput)
 		uinput = UINPUT_FILENAME;
 
-	int nb_shortcuts;
-	switch(nb_shortcuts = read_conf_file(filename)) {
-		case -1:
-			fprintf(stderr, "Error: unable to open file.\n");
-			return 2;
-		case -2:
-			fprintf(stderr, "Error: empty event name in conf file.\n");
-			return 3;
-		case -3:
-			fprintf(stderr, "Error: unknown event name in conf file.\n");
-			return 4;
-		case -4:
-			fprintf(stderr, "Error: the number of keys is limited to %i (power switch excepted). Please check your conf file.\n", NB_MAX_KEYS);
-			return 5;
-		default:
-			break;
+	if (read_conf_file(filename) < 0) {
+		fprintf(stderr, "Unable to parse configuration file: aborting.\n");
+		return EXIT_FAILURE;
 	}
 
 #ifdef BACKEND_VOLUME
@@ -123,5 +110,5 @@ int main(int argc, char **argv)
 
 	do_listen(event, uinput);
 	deinit();
-	return 0;
+	return EXIT_SUCCESS;
 }

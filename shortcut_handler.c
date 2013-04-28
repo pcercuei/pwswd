@@ -1,4 +1,5 @@
 
+#include <ini.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,23 @@ static struct shortcut *shortcuts = NULL;
 
 extern struct button buttons[NB_BUTTONS];
 
+static struct {
+	enum event_type type;
+	const char *str;
+} mapping[] = {
+	  { reboot,		"REBOOT", },
+	  { poweroff,	"POWEROFF", },
+	  { suspend,	"SUSPEND", },
+	  { hold,		"HOLD", },
+	  { volup,		"VOLUME_UP", },
+	  { voldown,	"VOLUME_DOWN", },
+	  { brightup,	"BRIGHTNESS_UP", },
+	  { brightdown,	"BRIGHTNESS_DOWN", },
+	  { mouse,		"MOUSE_EMULATION", },
+	  { tvout,		"TV_OUT", },
+	  { screenshot,	"SCREENSHOT", },
+	  { kill,		"KILL", },
+};
 
 static void shortcut_free(struct shortcut *scuts)
 {
@@ -24,84 +42,105 @@ static void shortcut_free(struct shortcut *scuts)
 
 int read_conf_file(const char *filename)
 {
-	FILE *conf = fopen(filename, "r");
-	if (!conf) return -1;
+	int nb = 0;
+	struct shortcut *old = NULL;
+	struct INI *ini = ini_open(filename);
+	if (!ini)
+		return -1;
 
-	char line[0x100];
-	char *word;
-	struct shortcut *newone=NULL, *prev=NULL;
+	while (1) {
+		const char *name;
+		size_t len;
+		int res = ini_next_section(ini, &name, &len);
+		if (res == 0)
+			fprintf(stderr, "Unable to find [Shortcuts] section\n");
+		if (res <= 0)
+			return -1;
+		if (!strncmp(name, "Shortcuts", len))
+			break;
+	}
 
-	unsigned int i,j,k;
-	for (i=0;;i++) {
-		if (fgets(line, 0x100, conf) == NULL)
-		  break;
+	while (1) {
+		struct shortcut *new;
+		const char *key, *value, *action = NULL;
+		size_t klen, vlen;
+		int res, i, nb_keys;
 
-		word = strtok(line, ":");
-		if (!word || !strlen(word)) {
-			free(word);
-			fclose(conf);
-			return -2;
+		res = ini_read_pair(ini, &key, &klen, &value, &vlen);
+		if (res < 0) {
+			fprintf(stderr, "Error while reading key/value pair\n");
+			goto error;
 		}
+		if (!res)
+			break;
 
-		newone = malloc(sizeof(struct shortcut));
-		newone->prev = prev;
-
-		if (!strcmp(word, "poweroff"))
-		  newone->action = poweroff;
-		else if (!strcmp(word, "reboot"))
-		  newone->action = reboot;
-		else if (!strcmp(word, "suspend"))
-		  newone->action = suspend;
-		else if (!strcmp(word, "hold"))
-		  newone->action = hold;
-		else if (!strcmp(word, "volup"))
-		  newone->action = volup;
-		else if (!strcmp(word, "voldown"))
-		  newone->action = voldown;
-		else if (!strcmp(word, "brightup"))
-		  newone->action = brightup;
-		else if (!strcmp(word, "brightdown"))
-		  newone->action = brightdown;
-		else if (!strcmp(word, "mouse"))
-		  newone->action = mouse;
-		else if (!strcmp(word, "tvout"))
-		  newone->action = tvout;
-		else if (!strcmp(word, "screenshot"))
-		  newone->action = screenshot;
-		else if (!strcmp(word, "suspend"))
-		  newone->action = suspend;
-		else if (!strcmp(word, "kill"))
-		  newone->action = kill;
-		else {
-			fclose(conf);
-			shortcut_free(newone);
-			return -3;
-		}
-
-		j=0;
-		while( (word = strtok(NULL, ",\n")) != NULL) {
-			if (j>= NB_MAX_KEYS) {
-				fclose(conf);
-				shortcut_free(newone);
-				return -4;
+		for (i = 0; i < sizeof(mapping) / sizeof(mapping[0]); i++)
+			if (!strncmp(key, mapping[i].str, klen)) {
+				action = mapping[i].str;
+				break;
 			}
 
-			for (k=0; k < NB_BUTTONS; k++) {
-				if (!strcmp(buttons[k].name, word)) {
-					newone->keys[j++] = &buttons[k];
+		if (!action) {
+			fprintf(stderr, "Unknown shortcut action in config file\n");
+			continue;
+		}
+
+		new = malloc(sizeof(*new));
+		if (!new) {
+			fprintf(stderr, "Unable to allocate memory\n");
+			goto error;
+		}
+
+		new->action = mapping[i].type;
+
+		nb_keys = 0;
+		while (1) {
+			int j, found = 0;
+			for (j = 0; j < NB_BUTTONS; j++) {
+				size_t len = buttons[j].name_len - 1;
+				if (!strncmp(buttons[j].name, value, len)) {
+					if (vlen > len && value[len] != ',' && value[len] != '\n')
+						break;
+					new->keys[nb_keys++] = &buttons[j];
+					value += len;
+					vlen -= len;
+					found = 1;
 					break;
 				}
 			}
+
+			if (!found) {
+				fprintf(stderr, "Unknown shortcut button in config file\n");
+				break;
+			}
+
+			if (vlen == 0)
+				break;
+
+			/* Skip the comma */
+			vlen--;
+			value++;
 		}
 
-		newone->nb_keys = j;
+		if (nb_keys == 0) {
+			fprintf(stderr, "Shortcut skipped for action %s"
+						" (no button mapped)\n", action);
+		}
 
-		prev = newone;
+		new->nb_keys = nb_keys;
+		new->prev = old;
+		old = new;
+		nb++;
 	}
 
-	fclose(conf);
-	shortcuts = newone;
-	return i;
+	shortcuts = old;
+	ini_close(ini);
+	return nb;
+
+error:
+	shortcut_free(shortcuts);
+	ini_close(ini);
+	return -1;
 }
 
 

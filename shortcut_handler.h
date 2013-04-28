@@ -16,6 +16,7 @@ enum event_type {
 
 struct button {
 	const char *name;
+	size_t name_len;
 	unsigned short id;
 	unsigned short state;
 };

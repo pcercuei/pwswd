@@ -23,7 +23,7 @@
 
 #define BUTTON(btn) BUTTON_##btn
 
-#define _BUTTON(btn) {#btn, BUTTON(btn), 0}
+#define _BUTTON(btn) {#btn, sizeof #btn, BUTTON(btn), 0}
 
 
 int do_listen();

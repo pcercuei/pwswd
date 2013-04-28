@@ -11,7 +11,7 @@ CC = $(CROSS_COMPILE)gcc
 
 DEFAULT_MIXER ?= "\"PCM\""
 
-LIBS =
+LIBS = -lini
 OBJS = event_listener.o shortcut_handler.o main.o
 
 ifdef BACKEND_VOLUME
