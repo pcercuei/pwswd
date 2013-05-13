@@ -98,3 +98,16 @@ void bright_down(int event_value) {
 
 	set_brightness(dev_file, current_value);
 }
+
+void blank(int enable)
+{
+	FILE *file;
+	char val = enable ? '1' : '0';
+
+	file = fopen(BLANKING_FILENAME, "w");
+	if (!file)
+		return;
+
+	fwrite(&val, sizeof(char), 1, file);
+	fclose(file);
+}
