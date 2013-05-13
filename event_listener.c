@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "event_listener.h"
 #include "shortcut_handler.h"
@@ -15,6 +16,12 @@
 #define DEBUGMSG(msg...) printf(msg)
 #else
 #define DEBUGMSG(msg...)
+#endif
+
+/* Time in seconds before poweroff when holding the power switch.
+ * Set to 0 to disable this feature. */
+#ifndef POWEROFF_TIMEOUT
+#define POWEROFF_TIMEOUT 3
 #endif
 
 
@@ -223,6 +230,24 @@ static int inject(unsigned short type, unsigned short code, int value)
 }
 
 
+#if (POWEROFF_TIMEOUT > 0)
+static void * poweroff_thd(void *p)
+{
+	int *cancel = p;
+
+	DEBUGMSG("poweroff thread: sleeping for %i seconds\n", POWEROFF_TIMEOUT);
+	sleep(POWEROFF_TIMEOUT);
+
+	if (!*cancel)
+		execute(poweroff, 0);
+	else
+		DEBUGMSG("Poweroff canceled\n");
+
+	return NULL;
+}
+#endif
+
+
 int power_button_is_pressed(void)
 {
 	return power_button_pressed;
@@ -244,6 +269,19 @@ int do_listen(const char *event, const char *uinput)
 	int key_combo, changed;
 	int read;
 
+#if (POWEROFF_TIMEOUT > 0)
+	int poweroff_cancel;
+	int with_poweroff_timeout = 1;
+
+	/* If a poweroff combo exist, don't activate the shutdown
+	 * on timeout feature */
+	for (tmp = shortcuts; tmp; tmp = tmp->prev)
+		if (tmp->action == poweroff) {
+			with_poweroff_timeout = 0;
+			break;
+		}
+#endif
+
 	while(1) {
 		// We wait for an event.
 		// On mouse mode, this call does not block.
@@ -263,6 +301,20 @@ int do_listen(const char *event, const char *uinput)
 
 				DEBUGMSG("(un)grabbing.\n");
 				power_button_pressed = my_event.value;
+
+#if (POWEROFF_TIMEOUT > 0)
+				if (with_poweroff_timeout) {
+					if (power_button_pressed) {
+						pthread_t thd;
+						poweroff_cancel = 0;
+						DEBUGMSG("Launching poweroff thread\n");
+						pthread_create(&thd, NULL, poweroff_thd, &poweroff_cancel);
+					} else {
+						DEBUGMSG("Power button released: canceling poweroff\n");
+						poweroff_cancel = 1;
+					}
+				}
+#endif
 
 				if (!grabbed) {
 					if (power_button_pressed)
@@ -290,10 +342,17 @@ int do_listen(const char *event, const char *uinput)
 
 					if (changed) {
 						for (i=0; i < tmp->nb_keys; i++)
-						  key_combo &= tmp->keys[i]->state;
+							key_combo &= tmp->keys[i]->state;
 
-						if (key_combo)
-						  execute(tmp->action, my_event.value);
+						if (key_combo) {
+#if (POWEROFF_TIMEOUT > 0)
+							if (with_poweroff_timeout) {
+								DEBUGMSG("Combo: canceling poweroff\n");
+								poweroff_cancel = 1;
+							}
+#endif
+							execute(tmp->action, my_event.value);
+						}
 					}
 
 					tmp = tmp->prev;

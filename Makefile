@@ -11,7 +11,7 @@ CC = $(CROSS_COMPILE)gcc
 
 DEFAULT_MIXER ?= "\"PCM\""
 
-LIBS = -lini
+LIBS = -lini -lpthread
 OBJS = event_listener.o shortcut_handler.o main.o
 
 ifdef BACKEND_VOLUME
@@ -38,7 +38,7 @@ endif
 ifdef BACKEND_SCREENSHOT
 	OBJS += backend/screenshot/screenshot.o
 	CFLAGS += -DBACKEND_SCREENSHOT
-	LIBS += -lpng -lpthread
+	LIBS += -lpng
 endif
 
 ifdef BACKEND_TVOUT
