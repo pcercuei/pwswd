@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
-#include <pthread.h>
 
 #include "event_listener.h"
 #include "shortcut_handler.h"
@@ -24,6 +23,11 @@
 #define POWEROFF_TIMEOUT 3
 #endif
 
+#if (POWEROFF_TIMEOUT > 0)
+#include <pthread.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#endif
 
 static struct uinput_user_dev uud = {
 	.name = "OpenDingux mouse daemon",
@@ -231,17 +235,48 @@ static int inject(unsigned short type, unsigned short code, int value)
 
 
 #if (POWEROFF_TIMEOUT > 0)
+struct poweroff_thd_args {
+	pthread_mutex_t mutex, mutex2;
+	unsigned long timeout;
+	unsigned char canceled;
+};
+
 static void * poweroff_thd(void *p)
 {
-	int *cancel = p;
+	struct poweroff_thd_args *args = p;
+	unsigned long *args_timeout = &args->timeout;
+	unsigned char *canceled = &args->canceled;
 
-	DEBUGMSG("poweroff thread: sleeping for %i seconds\n", POWEROFF_TIMEOUT);
-	sleep(POWEROFF_TIMEOUT);
+	while (1) {
+		unsigned long time_us;
+		long delay;
 
-	if (!*cancel)
-		execute(poweroff, 0);
-	else
-		DEBUGMSG("Poweroff canceled\n");
+		*canceled = 0;
+		pthread_mutex_unlock(&args->mutex2);
+		pthread_mutex_lock(&args->mutex);
+
+		do {
+			struct timeval tv;
+
+			gettimeofday(&tv, NULL);
+			time_us = tv.tv_sec * 1000000 + tv.tv_usec;
+			delay = *args_timeout - time_us;
+
+			DEBUGMSG("poweroff thread: sleeping for %i micro-seconds\n", delay);
+			if (delay <= 0)
+				break;
+
+			usleep(delay);
+
+		} while (*args_timeout > time_us + delay);
+
+		if (!*canceled) {
+			execute(poweroff, 0);
+		} else {
+			DEBUGMSG("Poweroff canceled\n");
+			*canceled = 1;
+		}
+	}
 
 	return NULL;
 }
@@ -270,8 +305,8 @@ int do_listen(const char *event, const char *uinput)
 	int read;
 
 #if (POWEROFF_TIMEOUT > 0)
-	int poweroff_cancel;
 	int with_poweroff_timeout = 1;
+	struct poweroff_thd_args *args;
 
 	/* If a poweroff combo exist, don't activate the shutdown
 	 * on timeout feature */
@@ -280,6 +315,23 @@ int do_listen(const char *event, const char *uinput)
 			with_poweroff_timeout = 0;
 			break;
 		}
+
+	if (with_poweroff_timeout) {
+		args = malloc(sizeof(*args));
+
+		if (!args) {
+			fprintf(stderr, "Unable to allocate memory\n");
+			with_poweroff_timeout = 0;
+		} else {
+			pthread_t thd;
+
+			pthread_mutex_init(&args->mutex, NULL);
+			pthread_mutex_init(&args->mutex2, NULL);
+			pthread_mutex_lock(&args->mutex);
+
+			pthread_create(&thd, NULL, poweroff_thd, args);
+		}
+	}
 #endif
 
 	while(1) {
@@ -305,13 +357,16 @@ int do_listen(const char *event, const char *uinput)
 #if (POWEROFF_TIMEOUT > 0)
 				if (with_poweroff_timeout) {
 					if (power_button_pressed) {
-						pthread_t thd;
-						poweroff_cancel = 0;
-						DEBUGMSG("Launching poweroff thread\n");
-						pthread_create(&thd, NULL, poweroff_thd, &poweroff_cancel);
+						struct timeval tv;
+
+						gettimeofday(&tv, NULL);
+						args->timeout = (tv.tv_sec + POWEROFF_TIMEOUT)
+									* 1000000 + tv.tv_usec;
+						if (!pthread_mutex_trylock(&args->mutex2))
+							pthread_mutex_unlock(&args->mutex);
 					} else {
 						DEBUGMSG("Power button released: canceling poweroff\n");
-						poweroff_cancel = 1;
+						args->canceled = 1;
 					}
 				}
 #endif
@@ -348,7 +403,7 @@ int do_listen(const char *event, const char *uinput)
 #if (POWEROFF_TIMEOUT > 0)
 							if (with_poweroff_timeout) {
 								DEBUGMSG("Combo: canceling poweroff\n");
-								poweroff_cancel = 1;
+								args->canceled = 1;
 							}
 #endif
 							execute(tmp->action, my_event.value);
