@@ -292,7 +292,7 @@ int do_listen(const char *event, const char *uinput)
 {
 	open_fds(event, uinput);
 
-	struct shortcut *tmp;
+	const struct shortcut *tmp;
 	const struct shortcut *shortcuts = getShortcuts();
 	struct input_event my_event;
 	unsigned int i;
@@ -383,9 +383,7 @@ int do_listen(const char *event, const char *uinput)
 
 			// If the power button is currently pressed, we enable shortcuts.
 			if (power_button_pressed) {
-
-				tmp = (struct shortcut *)shortcuts;
-				while(tmp) {
+				for (tmp = shortcuts; tmp; tmp = tmp->prev) {
 					key_combo = 1;
 					changed = 0;
 
@@ -409,8 +407,6 @@ int do_listen(const char *event, const char *uinput)
 							execute(tmp->action, my_event.value);
 						}
 					}
-
-					tmp = tmp->prev;
 				}
 				continue;
 			}
