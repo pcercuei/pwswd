@@ -10,3 +10,5 @@ BACKEND_KILL := Y
 # BACKEND_SCREENSHOT := Y
 
 DEFAULT_MIXER = "\"SoftMaster\""
+
+CROSS_COMPILE?=mipsel-a320-linux-uclibc-

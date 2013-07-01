@@ -8,3 +8,5 @@ BACKEND_SCREENSHOT := Y
 
 # Current OpenDingux/GCW0 doesn't support suspend
 # BACKEND_SUSPEND := Y
+
+CROSS_COMPILE?=mipsel-gcw0-linux-uclibc-
