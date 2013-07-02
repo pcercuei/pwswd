@@ -346,6 +346,21 @@ int do_listen(const char *event, const char *uinput)
 				DEBUGMSG("(un)grabbing.\n");
 				power_button_pressed = my_event.value;
 
+				if (!power_button_pressed) {
+					// Send release events to all active combos.
+					for (tmp = shortcuts; tmp; tmp = tmp->prev) {
+						int was_combo = 1;
+						unsigned int i;
+						for (i = 0; i < tmp->nb_keys; i++) {
+							struct button *button = tmp->keys[i];
+							was_combo &= button->state;
+							button->state = 0;
+						}
+						if (was_combo)
+							execute(tmp->action, 0);
+					}
+				}
+
 #if (POWEROFF_TIMEOUT > 0)
 				if (with_poweroff_timeout) {
 					if (power_button_pressed) {
@@ -376,31 +391,26 @@ int do_listen(const char *event, const char *uinput)
 			// If the power button is currently pressed, we enable shortcuts.
 			if (power_button_pressed) {
 				for (tmp = shortcuts; tmp; tmp = tmp->prev) {
-					int key_combo, changed; // booleans
+					int was_combo = 1, is_combo = 1, match = 0; // booleans
 					unsigned int i;
-
-					key_combo = 1;
-					changed = 0;
-
-					for(i=0; i < tmp->nb_keys; i++)
-					  if (my_event.code == tmp->keys[i]->id) {
-						  changed = 1;
-						  tmp->keys[i]->state = (my_event.value != 0);
-					  }
-
-					if (changed) {
-						for (i=0; i < tmp->nb_keys; i++)
-							key_combo &= tmp->keys[i]->state;
-
-						if (key_combo) {
-#if (POWEROFF_TIMEOUT > 0)
-							if (with_poweroff_timeout) {
-								DEBUGMSG("Combo: canceling poweroff\n");
-								args->canceled = 1;
-							}
-#endif
-							execute(tmp->action, my_event.value);
+					for (i = 0; i < tmp->nb_keys; i++) {
+						struct button *button = tmp->keys[i];
+						was_combo &= button->state;
+						if (my_event.code == button->id) {
+							match = 1;
+							button->state = (my_event.value != 0);
 						}
+						is_combo &= button->state;
+					}
+
+					if (match && (was_combo || is_combo)) {
+#if (POWEROFF_TIMEOUT > 0)
+						if (with_poweroff_timeout) {
+							DEBUGMSG("Combo: canceling poweroff\n");
+							args->canceled = 1;
+						}
+#endif
+						execute(tmp->action, my_event.value);
 					}
 				}
 				continue;
