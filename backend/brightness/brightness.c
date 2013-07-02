@@ -13,101 +13,128 @@
 #define MIN_BRIGHTNESS 10
 #define STEP_VALUE 10
 
-static int max_brightness = 0;
-static int current_value = 0;
+static int max_brightness = -1;
+static int current_value = -1;
 static FILE *dev_file = NULL;
 
-static int get_current_value(FILE *dev)
+static int dev_file_open(void)
 {
-	char tmp[0x10];
-
-	fread(tmp, sizeof(char), 0x10, dev);
-	return atoi(tmp);
+	if (!dev_file) {
+		dev_file = fopen(BRIGHT_FILENAME, "r+");
+		if (!dev_file)
+			return -1;
+		// Make stream unbuffered.
+		setbuf(dev_file, NULL);
+	}
+	return 0;
 }
 
-static void set_brightness(FILE *dev, int value)
+static void dev_file_close(void)
 {
-	char tmp[0x10];
-
-	sprintf(tmp, "%i", value);
-	write(fileno(dev), tmp, strlen(tmp)+1);
+	if (dev_file) {
+		fclose(dev_file);
+		dev_file = NULL;
+	}
 }
 
-static void bright_init() {
+static int get_brightness(void)
+{
+	int val;
+	int num_read;
+
+	if (dev_file_open() < 0)
+		return -1;
+
+	num_read = fscanf(dev_file, "%d\n", &val);
+	if (num_read == 0)
+		return -1;
+
+	return val;
+}
+
+static void set_brightness(int value)
+{
+	if (dev_file_open() < 0)
+		return ;
+
+	fprintf(dev_file, "%d\n", value);
+	fflush(dev_file);
+}
+
+static void max_brightness_init()
+{
 	// We retrieve the maximum brightness parameter.
 
 	FILE *file;
-	char tmp[0x10];
+	int val;
+	int num_read;
 
 	file = fopen(MAX_BRIGHT_FILENAME, "r");
-	fread(tmp, sizeof(char), 0x10, file);
-	max_brightness = atoi(tmp);
+	if (!file)
+		return;
+
+	num_read = fscanf(file, "%d\n", &val);
+	if (num_read != 0)
+		max_brightness = val;
+
 	fclose(file);
 }
 
-void bright_up(int event_value) {
-	if (!max_brightness) bright_init();
+static bright_adjust(int event_value, int delta)
+{
+	int new_value;
 
-	// If the button has been released, we simply close the BRIGHT_FILENAME file.
-	if (event_value == 0) {
-		fclose(dev_file);
+	if (max_brightness == -1) {
+		max_brightness_init();
+		if (max_brightness == -1)
+			return;
+	}
+
+	if (event_value == 0) { // key release
+		dev_file_close();
 		return;
 	}
 
-	// If the button has been pressed, update the current_value variable.
-	else if (event_value == 1) {
-		dev_file = fopen(BRIGHT_FILENAME, "r+");
-		current_value = get_current_value(dev_file);
+	if (event_value == 1) { // new key press (not a repeat)
+		// Make sure we fetch an up-to-date value in the next step.
+		dev_file_close();
+		current_value = -1;
 	}
 
-	if (current_value == max_brightness)
-	  return;
+	if (current_value == -1) {
+		current_value = get_brightness();
+		if (current_value == -1)
+			return;
+	}
 
-	else if (current_value + STEP_VALUE >= max_brightness)
-	  current_value = max_brightness;
+	new_value = current_value + delta;
+	if (new_value < MIN_BRIGHTNESS)
+		new_value = MIN_BRIGHTNESS;
+	else if (new_value > max_brightness)
+		new_value = max_brightness;
 
-	else
-	  current_value += STEP_VALUE;
-
-	set_brightness(dev_file, current_value);
+	if (new_value != current_value) {
+		current_value = new_value;
+		set_brightness(current_value);
+	}
 }
 
-void bright_down(int event_value) {
-	if (!max_brightness) bright_init();
+void bright_up(int event_value)
+{
+	bright_adjust(event_value, STEP_VALUE);
+}
 
-	// If the button has been released, we simply close the BRIGHT_FILENAME file.
-	if (event_value == 0) {
-		fclose(dev_file);
-		return;
-	}
-
-	// If the button has been pressed, update the current_value variable.
-	else if (event_value == 1) {
-		dev_file = fopen(BRIGHT_FILENAME, "r+");
-		current_value = get_current_value(dev_file);
-	}
-
-	if (current_value == MIN_BRIGHTNESS)
-	  return;
-
-	else if (current_value - STEP_VALUE <= MIN_BRIGHTNESS)
-	  current_value = MIN_BRIGHTNESS;
-
-	else
-	  current_value -= STEP_VALUE;
-
-	set_brightness(dev_file, current_value);
+void bright_down(int event_value)
+{
+	bright_adjust(event_value, -STEP_VALUE);
 }
 
 void blank(int enable)
 {
-	FILE *file;
-	char val = enable ? '1' : '0';
-
-	file = fopen(BLANKING_FILENAME, "w");
+	FILE *file = fopen(BLANKING_FILENAME, "w");
 	if (!file)
 		return;
 
-	fwrite(&val, sizeof(char), 1, file);
+	fprintf(file, "%d\n", enable);
 	fclose(file);
 }
