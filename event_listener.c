@@ -294,15 +294,6 @@ int do_listen(const char *event, const char *uinput)
 
 	const struct shortcut *tmp;
 	const struct shortcut *shortcuts = getShortcuts();
-	struct input_event my_event;
-	unsigned int i;
-
-	unsigned short code = 0;
-	int value = 0;
-
-	// booleans
-	int key_combo, changed;
-	int read;
 
 #if (POWEROFF_TIMEOUT > 0)
 	int with_poweroff_timeout = 1;
@@ -337,7 +328,8 @@ int do_listen(const char *event, const char *uinput)
 	while(1) {
 		// We wait for an event.
 		// On mouse mode, this call does not block.
-		read = fread(&my_event, sizeof(struct input_event), 1, event0);
+		struct input_event my_event;
+		int read = fread(&my_event, sizeof(struct input_event), 1, event0);
 
 		// If we are on "mouse" mode and nothing has been read, let's wait for a bit.
 		if (mode == MOUSE && !read)
@@ -384,6 +376,9 @@ int do_listen(const char *event, const char *uinput)
 			// If the power button is currently pressed, we enable shortcuts.
 			if (power_button_pressed) {
 				for (tmp = shortcuts; tmp; tmp = tmp->prev) {
+					int key_combo, changed; // booleans
+					unsigned int i;
+
 					key_combo = 1;
 					changed = 0;
 
@@ -421,6 +416,7 @@ int do_listen(const char *event, const char *uinput)
 
 			// An event occured
 			if (read) {
+				unsigned int i;
 
 				// Toggle the "value" flag of the button object
 				for (i=0; i<NB_BUTTONS; i++) {
@@ -463,10 +459,13 @@ int do_listen(const char *event, const char *uinput)
 
 			// No event this time
 			else {
-
 				// For each direction of the D-pad, we check the state of the corresponding button.
 				// If it is pressed, we inject an event with the corresponding mouse movement.
+				unsigned int i;
 				for (i=0; i<NB_BUTTONS; i++) {
+					unsigned short code;
+					int value;
+
 					if (!buttons[i].state)
 					  continue;
 
