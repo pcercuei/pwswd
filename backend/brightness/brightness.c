@@ -10,7 +10,9 @@
 #define MAX_BRIGHT_FILENAME "/sys/class/backlight/pwm-backlight/max_brightness"
 #define BLANKING_FILENAME "/sys/class/graphics/fb0/blank"
 
+#ifndef MIN_BRIGHTNESS
 #define MIN_BRIGHTNESS 10
+#endif
 #define STEP_VALUE 10
 
 static int max_brightness = -1;
