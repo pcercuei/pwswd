@@ -23,7 +23,7 @@
 #endif
 
 #ifndef DEFAULT_MIXER
-#define DEFAULT_MIXER "SoftMaster"
+#error Makefile should define DEFAULT_MIXER
 #endif
 
 static const char * const usage = "Usage:\n\t " PROGNAME
