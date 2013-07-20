@@ -251,7 +251,6 @@ static void * poweroff_thd(void *p)
 		unsigned long time_us;
 		long delay;
 
-		*canceled = 0;
 		pthread_mutex_unlock(&args->mutex2);
 		pthread_mutex_lock(&args->mutex);
 
@@ -270,12 +269,10 @@ static void * poweroff_thd(void *p)
 
 		} while (*args_timeout > time_us + delay);
 
-		if (!*canceled) {
+		if (!*canceled)
 			execute(poweroff, 0);
-		} else {
-			DEBUGMSG("Poweroff canceled\n");
-			*canceled = 1;
-		}
+
+		DEBUGMSG("Poweroff canceled\n");
 	}
 
 	return NULL;
@@ -369,6 +366,7 @@ int do_listen(const char *event, const char *uinput)
 						gettimeofday(&tv, NULL);
 						args->timeout = (tv.tv_sec + POWEROFF_TIMEOUT)
 									* 1000000 + tv.tv_usec;
+						args->canceled = 0;
 						if (!pthread_mutex_trylock(&args->mutex2))
 							pthread_mutex_unlock(&args->mutex);
 					} else {
