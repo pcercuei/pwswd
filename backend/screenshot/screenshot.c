@@ -13,24 +13,15 @@
 
 #define XRES 320
 #define YRES 240
-#define PIXELTYPE uint16_t
-
-typedef PIXELTYPE pixel_t;
 
 typedef struct {
 	uint8_t r, g, b;
 } uint24_t;
 
-struct screenshot_data {
-	FILE *pngfile;
-	png_structp png;
-	png_infop info;
-	uint24_t *picture;
-};
-
 
 static unsigned int number = 1;
 static pthread_mutex_t number_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 static inline unsigned int getNumber(void)
 {
@@ -42,10 +33,7 @@ static inline unsigned int getNumber(void)
 }
 
 
-#define _TO_24(type, px) type##_to_24(px)
-#define  TO_24(type, px) _TO_24(type, px)
-
-static inline uint24_t uint16_t_to_24(uint16_t px)
+static inline uint24_t rgb16_to_24(uint16_t px)
 {
 	uint24_t pixel;
 
@@ -56,70 +44,40 @@ static inline uint24_t uint16_t_to_24(uint16_t px)
 	return pixel;
 }
 
-static inline void convert_to_24(uint24_t *to, pixel_t *from, unsigned int len)
+
+static inline void convert_to_24(uint24_t *to, uint16_t *from, unsigned int len)
 {
 	while (len--)
-	  *to++ = TO_24(PIXELTYPE, *from++);
-}
-
-
-static int init_png(struct screenshot_data * data)
-{
-	data->png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-				NULL, NULL, NULL);
-	if (!data->png) {
-		fprintf(stderr, "Unable to write PNG header.\n");
-		return 1;
-	}
-
-	data->info = png_create_info_struct(data->png);
-	if (!data->info) {
-		fprintf(stderr, "Unable to write PNG header.\n");
-		png_destroy_write_struct(&data->png, NULL);
-		return 2;
-	}
-
-	png_init_io(data->png, data->pngfile);
-	png_set_IHDR(data->png, data->info, XRES, YRES, 8,
-				PNG_COLOR_TYPE_RGB, 
-				PNG_INTERLACE_NONE,
-				PNG_COMPRESSION_TYPE_BASE,
-				PNG_FILTER_TYPE_BASE);
-	png_write_info(data->png, data->info);
-	return 0;
+	  *to++ = rgb16_to_24(*from++);
 }
 
 
 static void * screenshot_thd(void* p)
 {
-	unsigned int i, n;
+	unsigned int i;
 	png_bytep row_pointers[YRES];
-	pixel_t  *buffer;
-	FILE *fbdev;
-	char *screenshot_fn, *png_fn, *home;
+	png_structp png;
+	png_infop info;
+	void *picture, *buffer;
+	FILE *fbdev, *pngfile = (FILE *) p;
 
-	struct screenshot_data *data = (struct screenshot_data*)p;
-
-	data->picture = (uint24_t*) malloc(XRES * YRES * sizeof(uint24_t));
-	if (!data->picture) {
+	picture = malloc(XRES * YRES * sizeof(uint24_t));
+	if (!picture) {
 		fprintf(stderr, "Unable to allocate memory.\n");
-		free(data);
 		return NULL;
 	}
 
 	// Pointer to an area corresponding to the end of the "picture" buffer.
-	buffer = (pixel_t*)( (uint8_t*)data->picture + (sizeof(uint24_t) - sizeof(pixel_t)) * XRES * YRES);
+	buffer = picture + (sizeof(uint24_t) - sizeof(uint16_t)) * XRES * YRES;
 
 	fbdev = fopen(FRAMEBUFFER, "rb");
 	if (!fbdev) {
 		fprintf(stderr, "Unable to open framebuffer device.\n");
-		free(data->picture);
-		free(data);
-		return NULL;
+		goto err_free_picture;
 	}
 
 	// Read the framebuffer data.
-	read(fileno(fbdev), buffer, XRES*YRES*sizeof(pixel_t));
+	read(fileno(fbdev), buffer, XRES * YRES * 2);
 	fclose(fbdev);
 
 	// The framebuffer has been read, now we can fall back to a lower priority.
@@ -134,23 +92,71 @@ static void * screenshot_thd(void* p)
 		pthread_setschedparam(my_thread, policy, &params);
 	  }
 
-	home = getenv("HOME");
+	// Init the PNG stuff, and write the header
+	png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+				NULL, NULL, NULL);
+	if (!png) {
+		fprintf(stderr, "Unable to write PNG header.\n");
+		goto err_free_picture;
+	}
+
+	info = png_create_info_struct(png);
+	if (!info) {
+		fprintf(stderr, "Unable to write PNG header.\n");
+		goto err_free_png;
+	}
+
+	png_init_io(png, pngfile);
+	png_set_IHDR(png, info, XRES, YRES, 8,
+				PNG_COLOR_TYPE_RGB,
+				PNG_INTERLACE_NONE,
+				PNG_COMPRESSION_TYPE_BASE,
+				PNG_FILTER_TYPE_BASE);
+	png_write_info(png, info);
+
+	// Convert the picture to a format that can be written into the PNG file (rgb888)
+	convert_to_24(picture, buffer, XRES * YRES);
+
+	// And save the final image
+	for (i=0; i<YRES; i++)
+		row_pointers[i] = picture + i * XRES * sizeof(uint24_t);
+
+	png_write_image(png, row_pointers);
+	png_write_end(png, info);
+
+	png_destroy_write_struct(NULL, &info);
+err_free_png:
+	png_destroy_write_struct(&png, NULL);
+err_free_picture:
+	free(picture);
+	return NULL;
+}
+
+
+void do_screenshot(void)
+{
+	pthread_t thd = 0;
+	char *screenshot_fn, *png_fn;
+	FILE *pngfile;
+	const char *home = getenv("HOME");
+
 	if (!home) {
 		fprintf(stderr, "$HOME is not defined.\n");
-		free(data->picture);
-		free(data);
-		return NULL;
+		return;
 	}
 
 	/* 32 = strlen("/screenshots") + strlen("/screenshot%03d.png") +1
 	 * 31 = strlen("/screenshots") + strlen("/screenshotXXX.png") +1 */
 	screenshot_fn = malloc(strlen(home) + 32);
-	png_fn = malloc(strlen(home) + 31);
-	if (!screenshot_fn || !png_fn) {
+	if (!screenshot_fn) {
 		fprintf(stderr, "Unable to allocate memory for screenshot filename string.\n");
-		if (screenshot_fn) free(screenshot_fn);
-		free(data->picture);
-		free(data);
+		return;
+	}
+
+	png_fn = malloc(strlen(home) + 31);
+	if (!png_fn) {
+		fprintf(stderr, "Unable to allocate memory for screenshot filename string.\n");
+		goto free_screenshot_fn;
 	}
 
 	strcpy(screenshot_fn, home);
@@ -160,74 +166,29 @@ static void * screenshot_thd(void* p)
 
 	// Try to find a file on which the data is to be saved.
 	for (;;) {
-		n = getNumber();
-		sprintf(png_fn, screenshot_fn, n);
-		data->pngfile = fopen(png_fn, "ab+");
-		if (!data->pngfile) {
+		sprintf(png_fn, screenshot_fn, getNumber());
+		pngfile = fopen(png_fn, "ab+");
+		if (!pngfile) {
 			fprintf(stderr, "Unable to open file for write.\n");
-			free(png_fn);
-			free(screenshot_fn);
-			free(data->picture);
-			free(data);
-			return NULL;
+			goto free_png_fn;
 		}
 
-		fseek(data->pngfile, 0, SEEK_END);
-		if (ftell(data->pngfile) == 0)
-		  break;
+		fseek(pngfile, 0, SEEK_END);
+		if (ftell(pngfile) == 0)
+			break;
 
-		fclose(data->pngfile);
+		fclose(pngfile);
 	}
 
-	free(screenshot_fn);
-
-	rewind(data->pngfile);
-
-	// Init the PNG stuff, and write the header
-	if (init_png(data)) {
-		fprintf(stderr, "Unable to init PNG context.\n");
-		fclose(data->pngfile);
-		free(png_fn);
-		free(data->picture);
-		free(data);
-		return NULL;
-	}
-
-	// Convert the picture to a format that can be written into the PNG file (rgb888)
-	convert_to_24(data->picture, buffer, XRES*YRES);
-
-	// And save the final image
-	for (i=0; i<YRES; i++)
-	  row_pointers[i] = (png_bytep)data->picture + i * XRES * sizeof(uint24_t);
-
-	png_write_image(data->png, row_pointers);
-
-	png_write_end(data->png, data->info);
-	png_destroy_write_struct(&data->png, &data->info);
-
+	rewind(pngfile);
+	pthread_create(&thd, NULL, screenshot_thd, pngfile);
+	pthread_join(thd, NULL);
 	printf("Wrote to %s\n", png_fn);
+
+	fclose(pngfile);
+free_png_fn:
 	free(png_fn);
-
-	if (data->pngfile)
-	  fclose(data->pngfile);
-
-	free(data->picture);
-	free(data);
-	return NULL;
+free_screenshot_fn:
+	free(screenshot_fn);
+	return;
 }
-
-
-void do_screenshot(void)
-{
-	pthread_t thd;
-	struct screenshot_data * data;
-
-	data = malloc(sizeof(struct screenshot_data));
-	if (!data) {
-		fprintf(stderr, "Unable to allocate memory.\n");
-		return;
-	}
-
-	pthread_create(&thd, NULL, screenshot_thd, data);
-}
-
