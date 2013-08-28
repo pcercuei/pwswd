@@ -20,6 +20,9 @@ void do_kill(void)
 
 	/* Perhaps the framebuffer was not in use;
 	 * try to kill a console-based application. */
-	if (!fork())
+	son = fork();
+	if (!son)
 		execlp("fuser", "fuser", "-k", "-HUP", TTY1, NULL);
+
+	waitpid(son, &status, 0);
 }
