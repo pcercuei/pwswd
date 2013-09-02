@@ -15,7 +15,7 @@
 #endif
 
 #ifndef EVENT_FILENAME
-#define EVENT_FILENAME  "/dev/event0"
+#define EVENT_FILENAME  "/dev/input/event0"
 #endif
 
 #ifndef UINPUT_FILENAME
