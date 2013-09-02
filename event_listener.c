@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <assert.h>
 
 #include "event_listener.h"
 #include "shortcut_handler.h"
@@ -72,9 +71,10 @@ static void switchmode(enum _mode new)
 		case NORMAL:
 			switch(new) {
 				case MOUSE:
-					// Enable non-blocking reads: we won't have to wait for an event
-					// to process mouse emulation.
-					assert(!fcntl(fileno(event0), F_SETFL, O_NONBLOCK));
+					// Enable non-blocking reads: we won't have to wait for an
+					// event to process mouse emulation.
+					if (fcntl(fileno(event0), F_SETFL, O_NONBLOCK) == -1)
+						perror(__func__);
 				case HOLD:
 					grabbed = 1;
 				default:
@@ -84,7 +84,8 @@ static void switchmode(enum _mode new)
 			break;
 		case MOUSE:
 			// Disable non-blocking reads.
-			assert(!fcntl(fileno(event0), F_SETFL, 0));
+			if (fcntl(fileno(event0), F_SETFL, 0) == -1)
+				perror(__func__);
 		case HOLD:
 			switch(new) {
 				case NORMAL:
@@ -188,35 +189,52 @@ static void execute(enum event_type event, int value)
 }
 
 
-static void open_fds(const char *event0fn, const char *uinputfn)
+static int open_fds(const char *event0fn, const char *uinputfn)
 {
 	event0 = fopen(event0fn, "r");
-	assert(event0);
+	if (!event0) {
+		perror("opening event0");
+		return -1;
+	}
 
 	uinput = fopen(uinputfn, "r+");
-	assert(uinput);
+	if (!uinput) {
+		perror("opening uinput");
+		return -1;
+	}
 
-	write(fileno(uinput), &uud, sizeof(uud));
-	assert(!ioctl(fileno(uinput), UI_SET_EVBIT, EV_KEY));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_LEFT));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_MIDDLE));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_RIGHT));
+	int fd = fileno(uinput);
+	write(fd, &uud, sizeof(uud));
 
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_X));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_Y));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_L));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_R));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_START));
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BUTTON_SELECT));
+	if (ioctl(fd, UI_SET_EVBIT, EV_KEY) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BTN_LEFT) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BTN_MIDDLE) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT) == -1) goto filter_fail;
 
-	assert(!ioctl(fileno(uinput), UI_SET_EVBIT, EV_REL));
-	assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_X));
-	assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_Y));
-	assert(!ioctl(fileno(uinput), UI_SET_RELBIT, REL_WHEEL));
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_X) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_Y) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_L) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_R) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_START) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_SELECT) == -1) goto filter_fail;
 
-	assert(!ioctl(fileno(uinput), UI_SET_KEYBIT, BTN_MOUSE));
+	if (ioctl(fd, UI_SET_EVBIT, EV_REL) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_RELBIT, REL_X) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_RELBIT, REL_Y) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_RELBIT, REL_WHEEL) == -1) goto filter_fail;
 
-	assert(!ioctl(fileno(uinput), UI_DEV_CREATE));
+	if (ioctl(fd, UI_SET_KEYBIT, BTN_MOUSE) == -1) goto filter_fail;
+
+	if (ioctl(fd, UI_DEV_CREATE)) {
+		perror("creating device");
+		return -1;
+	}
+
+	return 0;
+
+filter_fail:
+	perror("setting event filter bits");
+	return -1;
 }
 
 
@@ -287,7 +305,8 @@ int power_button_is_pressed(void)
 
 int do_listen(const char *event, const char *uinput)
 {
-	open_fds(event, uinput);
+	if (open_fds(event, uinput))
+		return -1;
 
 	const struct shortcut *tmp;
 	const struct shortcut *shortcuts = getShortcuts();
@@ -377,10 +396,9 @@ int do_listen(const char *event, const char *uinput)
 #endif
 
 				if (!grabbed) {
-					if (power_button_pressed)
-					  assert(!ioctl(fileno(event0), EVIOCGRAB, 1));
-					else
-					  assert(!ioctl(fileno(event0), EVIOCGRAB, 0));
+					if (ioctl(fileno(event0), EVIOCGRAB, !!power_button_pressed)
+							== -1)
+						perror(__func__);
 				}
 				continue;
 			}

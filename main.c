@@ -42,6 +42,7 @@ int main(int argc, char **argv)
 		  *mixer = NULL, *dac = NULL,
 #endif
 		  *event = NULL, *uinput = NULL;
+	int exitcode = EXIT_SUCCESS;
 	size_t i;
 
 	for (i = 1; i < argc; i++) {
@@ -108,7 +109,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unable to init volume backend\n");
 #endif
 
-	do_listen(event, uinput);
+	if (do_listen(event, uinput))
+		exitcode = EXIT_FAILURE;
 	deinit();
-	return EXIT_SUCCESS;
+	return exitcode;
 }
