@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 	
 	if (!filename) {
 		struct stat st;
-		filename = "/etc/local/" PROGNAME ".conf";
+		filename = "/usr/local/etc/" PROGNAME ".conf";
 
 		if (stat(filename, &st) == -1) {
 			filename = "/etc/" PROGNAME ".conf";
