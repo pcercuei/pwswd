@@ -113,7 +113,7 @@ static void execute(enum event_type event, int value)
 #endif
 #ifdef BACKEND_POWEROFF
 		case poweroff:
-			if (value != 1) return;
+			if (value == 2) return;
 			str = "poweroff";
 			do_poweroff();
 			break;
