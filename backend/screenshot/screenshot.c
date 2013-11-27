@@ -92,8 +92,8 @@ static int get_framebuffer_info(int fd,
 	*bpp = info.bits_per_pixel;
 
 	/* Set the offset to the front buffer in case of double-buffering */
-	if (info.yres != info.yres_virtual && !info.yoffset)
-		*offset = info.yres * info.xres * ((info.bits_per_pixel + 7) >> 3);
+	if (info.yres != info.yres_virtual && info.yoffset)
+		*offset = info.yoffset * info.xres * ((info.bits_per_pixel + 7) >> 3);
 	else
 		*offset = 0;
 	return 0;
@@ -138,7 +138,7 @@ static void * screenshot_thd(void* p)
 	// Pointer to an area corresponding to the end of the "picture" buffer.
 	buffer = picture + (4 - (bpp >> 3)) * width * height;
 
-	if (!offset)
+	if (offset)
 		fseek(fbdev, offset, SEEK_SET);
 
 	// Read the framebuffer data.
