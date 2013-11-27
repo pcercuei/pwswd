@@ -12,3 +12,5 @@ BACKEND_KILL := Y
 DEFAULT_MIXER = "\"SoftMaster\""
 
 CROSS_COMPILE?=mipsel-a320-linux-uclibc-
+
+CFLAGS += -DWITH_REVERSED_X_Y
