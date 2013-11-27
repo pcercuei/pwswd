@@ -77,6 +77,7 @@ static void switchmode(enum _mode new)
 						perror(__func__);
 				case HOLD:
 					grabbed = 1;
+					blank(1);
 				default:
 					mode = new;
 					return;
@@ -92,6 +93,7 @@ static void switchmode(enum _mode new)
 					grabbed = 0;
 				default:
 					mode = new;
+					blank(0);
 					return;
 			}
 		default:
