@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <unistd.h>
 #include <linux/uinput.h>
@@ -60,8 +59,7 @@ struct button buttons[NB_BUTTONS] = {
 static FILE *event0 = NULL;
 static FILE *uinput = NULL;
 
-static int grabbed = 0;
-static int power_button_pressed = 0;
+static bool grabbed, power_button_pressed;
 
 static void switchmode(enum _mode new)
 {
@@ -76,7 +74,7 @@ static void switchmode(enum _mode new)
 					if (fcntl(fileno(event0), F_SETFL, O_NONBLOCK) == -1)
 						perror(__func__);
 				case HOLD:
-					grabbed = 1;
+					grabbed = true;
 					blank(1);
 				default:
 					mode = new;
@@ -90,7 +88,7 @@ static void switchmode(enum _mode new)
 		case HOLD:
 			switch(new) {
 				case NORMAL:
-					grabbed = 0;
+					grabbed = false;
 				default:
 					mode = new;
 					blank(0);
@@ -300,7 +298,7 @@ static void * poweroff_thd(void *p)
 #endif
 
 
-int power_button_is_pressed(void)
+bool power_button_is_pressed(void)
 {
 	return power_button_pressed;
 }
@@ -314,14 +312,14 @@ int do_listen(const char *event, const char *uinput)
 	const struct shortcut *shortcuts = getShortcuts();
 
 #if (POWEROFF_TIMEOUT > 0)
-	int with_poweroff_timeout = 1;
+	bool with_poweroff_timeout = true;
 	struct poweroff_thd_args *args;
 
 	/* If a poweroff combo exist, don't activate the shutdown
 	 * on timeout feature */
 	for (tmp = shortcuts; tmp; tmp = tmp->prev)
 		if (tmp->action == poweroff) {
-			with_poweroff_timeout = 0;
+			with_poweroff_timeout = false;
 			break;
 		}
 
@@ -330,7 +328,7 @@ int do_listen(const char *event, const char *uinput)
 
 		if (!args) {
 			fprintf(stderr, "Unable to allocate memory\n");
-			with_poweroff_timeout = 0;
+			with_poweroff_timeout = false;
 		} else {
 			pthread_t thd;
 
@@ -362,16 +360,16 @@ int do_listen(const char *event, const char *uinput)
 				  continue;
 
 				DEBUGMSG("(un)grabbing.\n");
-				power_button_pressed = my_event.value;
+				power_button_pressed = !!my_event.value;
 
 				if (!power_button_pressed) {
 					// Send release events to all active combos.
 					for (tmp = shortcuts; tmp; tmp = tmp->prev) {
-						int was_combo = 1;
+						bool was_combo = true;
 						unsigned int i;
 						for (i = 0; i < tmp->nb_keys; i++) {
 							struct button *button = tmp->keys[i];
-							was_combo &= button->state;
+							was_combo &= !!button->state;
 							button->state = 0;
 						}
 						if (was_combo)
@@ -398,7 +396,7 @@ int do_listen(const char *event, const char *uinput)
 #endif
 
 				if (!grabbed) {
-					if (ioctl(fileno(event0), EVIOCGRAB, !!power_button_pressed)
+					if (ioctl(fileno(event0), EVIOCGRAB, power_button_pressed)
 							== -1)
 						perror(__func__);
 				}
@@ -409,11 +407,11 @@ int do_listen(const char *event, const char *uinput)
 			// If the power button is currently pressed, we enable shortcuts.
 			if (power_button_pressed) {
 				for (tmp = shortcuts; tmp; tmp = tmp->prev) {
-					int was_combo = 1, is_combo = 1, match = 0; // booleans
+					bool was_combo = true, is_combo = true, match = false;
 					unsigned int i;
 					for (i = 0; i < tmp->nb_keys; i++) {
 						struct button *button = tmp->keys[i];
-						was_combo &= button->state;
+						was_combo &= !!button->state;
 						if (my_event.code == button->id) {
 							match = 1;
 							button->state = (my_event.value != 0);

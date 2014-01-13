@@ -2,6 +2,7 @@
 #ifndef EVENT_LISTENER_H
 #define EVENT_LISTENER_H
 
+#include <stdbool.h>
 #include <linux/input.h>
 
 #define BUTTON_A KEY_LEFTCTRL
@@ -31,8 +32,7 @@
 
 #define _BUTTON(btn) {#btn, sizeof #btn, BUTTON(btn), 0}
 
-
 int do_listen();
-int power_button_is_pressed(void);
+bool power_button_is_pressed(void);
 
 #endif // EVENT_LISTENER_H
