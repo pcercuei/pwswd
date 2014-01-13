@@ -73,13 +73,15 @@ static void switchmode(enum _mode new)
 					// event to process mouse emulation.
 					if (fcntl(fileno(event0), F_SETFL, O_NONBLOCK) == -1)
 						perror(__func__);
+					grabbed = true;
+					break;
 				case HOLD:
 					grabbed = true;
 					blank(1);
 				default:
-					mode = new;
-					return;
+					break;
 			}
+			mode = new;
 			break;
 		case MOUSE:
 			// Disable non-blocking reads.
