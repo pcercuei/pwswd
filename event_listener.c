@@ -56,9 +56,7 @@ struct button buttons[NB_BUTTONS] = {
 };
 
 
-static FILE *event0 = NULL;
-static FILE *uinput = NULL;
-
+static FILE *event0, *uinput;
 static bool grabbed, power_button_pressed;
 
 static void switchmode(enum _mode new)
@@ -219,6 +217,7 @@ static int open_fds(const char *event0fn, const char *uinputfn)
 	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_R) == -1) goto filter_fail;
 	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_START) == -1) goto filter_fail;
 	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_SELECT) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_POWER) == -1) goto filter_fail;
 
 	if (ioctl(fd, UI_SET_EVBIT, EV_REL) == -1) goto filter_fail;
 	if (ioctl(fd, UI_SET_RELBIT, REL_X) == -1) goto filter_fail;
@@ -343,6 +342,8 @@ int do_listen(const char *event, const char *uinput)
 	}
 #endif
 
+	bool combo_used = false;
+
 	while(1) {
 		// We wait for an event.
 		// On mouse mode, this call does not block.
@@ -377,6 +378,15 @@ int do_listen(const char *event, const char *uinput)
 						if (was_combo)
 							execute(tmp->action, 0);
 					}
+
+					if (!combo_used) {
+						DEBUGMSG("No combo used, injecting BUTTON_POWER\n");
+						inject(EV_KEY, BUTTON_POWER, 1);
+						inject(EV_KEY, BUTTON_POWER, 0);
+						inject(EV_SYN, SYN_REPORT, 0);
+					}
+
+					combo_used = false;
 				}
 
 #if (POWEROFF_TIMEOUT > 0)
@@ -428,6 +438,7 @@ int do_listen(const char *event, const char *uinput)
 							args->canceled = 1;
 						}
 #endif
+						combo_used = true;
 						execute(tmp->action, my_event.value);
 					}
 				}
