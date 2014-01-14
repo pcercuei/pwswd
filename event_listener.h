@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <linux/input.h>
 
+#define EVENT_SWITCH_POWER KEY_POWER
+
 #define BUTTON_A KEY_LEFTCTRL
 #define BUTTON_B KEY_LEFTALT
 #define BUTTON_L KEY_TAB
@@ -26,7 +28,7 @@
 #define BUTTON_Y KEY_SPACE
 #endif
 
-#define NB_BUTTONS 14
+#define NB_BUTTONS 13
 
 #define BUTTON(btn) BUTTON_##btn
 

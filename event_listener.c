@@ -38,6 +38,7 @@ enum _mode {
 
 static enum _mode mode = NORMAL;
 
+/* Buttons available for shortcuts */
 struct button buttons[NB_BUTTONS] = {
 	_BUTTON(UP),
 	_BUTTON(DOWN),
@@ -51,7 +52,6 @@ struct button buttons[NB_BUTTONS] = {
 	_BUTTON(R),
 	_BUTTON(SELECT),
 	_BUTTON(START),
-	_BUTTON(POWER),
 	_BUTTON(HOLD),
 };
 
@@ -102,7 +102,7 @@ static void switchmode(enum _mode new)
 
 static void execute(enum event_type event, int value)
 {
-	char *str;
+	char *str = NULL;
 	switch(event) {
 #ifdef BACKEND_REBOOT
 		case reboot:
@@ -129,9 +129,9 @@ static void execute(enum event_type event, int value)
 			if (value != 1) return;
 			str = "hold";
 			if (mode == HOLD)
-			  switchmode(NORMAL);
+				switchmode(NORMAL);
 			else
-			  switchmode(HOLD);
+				switchmode(HOLD);
 			break;
 #ifdef BACKEND_VOLUME
 		case volup:
@@ -157,9 +157,9 @@ static void execute(enum event_type event, int value)
 			if (value != 1) return;
 			str = "mouse";
 			if (mode == MOUSE)
-			  switchmode(NORMAL);
+				switchmode(NORMAL);
 			else
-			  switchmode(MOUSE);
+				switchmode(MOUSE);
 			break;
 #ifdef BACKEND_TVOUT
 		case tvout:
@@ -352,15 +352,15 @@ int do_listen(const char *event, const char *uinput)
 
 		// If we are on "mouse" mode and nothing has been read, let's wait for a bit.
 		if (mode == MOUSE && !read)
-		  usleep(10000);
+			usleep(10000);
 
 		if (read) {
 			// If the power button is pressed, block inputs (if it wasn't already blocked)
-			if (my_event.code == KEY_POWER) {
+			if (my_event.code == EVENT_SWITCH_POWER) {
 
 				// We don't want key repeats on the power button.
 				if (my_event.value == 2)
-				  continue;
+					continue;
 
 				DEBUGMSG("(un)grabbing.\n");
 				power_button_pressed = !!my_event.value;
@@ -451,7 +451,7 @@ int do_listen(const char *event, const char *uinput)
 
 			// We don't want to move the mouse if the power button is pressed.
 			if (power_button_pressed)
-			  continue;
+				continue;
 
 			// An event occured
 			if (read) {
@@ -460,21 +460,21 @@ int do_listen(const char *event, const char *uinput)
 				// Toggle the "value" flag of the button object
 				for (i=0; i<NB_BUTTONS; i++) {
 					if (buttons[i].id == my_event.code)
-					  buttons[i].state = my_event.value;
+						buttons[i].state = my_event.value;
 				}
 
 				switch(my_event.code) {
 					case BUTTON_A:
-						if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
-						  continue;
+						if (my_event.value == 2) /* Disable repeat on mouse buttons */
+							continue;
 
 						inject(EV_KEY, BTN_LEFT, my_event.value);
 						inject(EV_SYN, SYN_REPORT, 0);
 						continue;
 
 					case BUTTON_B:
-						if (my_event.value == 2)    // We don't want key repeats on mouse buttons.
-						  continue;
+						if (my_event.value == 2) /* Disable repeat on mouse buttons */
+							continue;
 
 						inject(EV_KEY, BTN_RIGHT, my_event.value);
 						inject(EV_SYN, SYN_REPORT, 0);
@@ -506,7 +506,7 @@ int do_listen(const char *event, const char *uinput)
 					int value;
 
 					if (!buttons[i].state)
-					  continue;
+						continue;
 
 					switch(buttons[i].id) {
 						case BUTTON_LEFT:
