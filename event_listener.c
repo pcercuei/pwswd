@@ -38,24 +38,6 @@ enum _mode {
 
 static enum _mode mode = NORMAL;
 
-/* Buttons available for shortcuts */
-struct button buttons[NB_BUTTONS] = {
-	_BUTTON(UP),
-	_BUTTON(DOWN),
-	_BUTTON(LEFT),
-	_BUTTON(RIGHT),
-	_BUTTON(A),
-	_BUTTON(B),
-	_BUTTON(X),
-	_BUTTON(Y),
-	_BUTTON(L),
-	_BUTTON(R),
-	_BUTTON(SELECT),
-	_BUTTON(START),
-	_BUTTON(HOLD),
-};
-
-
 static FILE *event0, *uinput;
 static bool grabbed, power_button_pressed;
 
@@ -458,7 +440,7 @@ int do_listen(const char *event, const char *uinput)
 				unsigned int i;
 
 				// Toggle the "value" flag of the button object
-				for (i=0; i<NB_BUTTONS; i++) {
+				for (i = 0; i < nb_buttons; i++) {
 					if (buttons[i].id == my_event.code)
 						buttons[i].state = my_event.value;
 				}
@@ -501,7 +483,7 @@ int do_listen(const char *event, const char *uinput)
 				// For each direction of the D-pad, we check the state of the corresponding button.
 				// If it is pressed, we inject an event with the corresponding mouse movement.
 				unsigned int i;
-				for (i=0; i<NB_BUTTONS; i++) {
+				for (i = 0; i < nb_buttons; i++) {
 					unsigned short code;
 					int value;
 

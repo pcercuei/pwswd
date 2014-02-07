@@ -7,9 +7,29 @@
 #include "event_listener.h"
 #include "shortcut_handler.h"
 
-static struct shortcut *shortcuts = NULL;
+#define BUTTON(btn) BUTTON_##btn
+#define _BUTTON(btn) {#btn, sizeof #btn, BUTTON(btn), 0}
 
-extern struct button buttons[NB_BUTTONS];
+static struct shortcut *shortcuts;
+
+/* Buttons available for shortcuts */
+struct button buttons[] = {
+	_BUTTON(UP),
+	_BUTTON(DOWN),
+	_BUTTON(LEFT),
+	_BUTTON(RIGHT),
+	_BUTTON(A),
+	_BUTTON(B),
+	_BUTTON(X),
+	_BUTTON(Y),
+	_BUTTON(L),
+	_BUTTON(R),
+	_BUTTON(SELECT),
+	_BUTTON(START),
+	_BUTTON(HOLD),
+};
+
+unsigned int nb_buttons = sizeof(buttons) / sizeof(buttons[0]);
 
 static struct {
 	enum event_type type;
@@ -96,7 +116,7 @@ int read_conf_file(const char *filename)
 		nb_keys = 0;
 		while (1) {
 			int j, found = 0;
-			for (j = 0; j < NB_BUTTONS; j++) {
+			for (j = 0; j < nb_buttons; j++) {
 				size_t len = buttons[j].name_len - 1;
 				if (!strncmp(buttons[j].name, value, len)) {
 					if (vlen > len && value[len] != ',' && value[len] != '\n')
