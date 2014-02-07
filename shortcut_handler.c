@@ -8,7 +8,9 @@
 #include "shortcut_handler.h"
 
 #define BUTTON(btn) BUTTON_##btn
-#define _BUTTON(btn) {#btn, sizeof #btn, BUTTON(btn), 0}
+#define _BUTTON(btn) {#btn, sizeof #btn, BUTTON(btn), 0, 0}
+
+#define _HAT(axis, value) {#axis, sizeof #axis, BUTTON(axis), 0, value}
 
 static struct shortcut *shortcuts;
 
@@ -27,6 +29,20 @@ struct button buttons[] = {
 	_BUTTON(SELECT),
 	_BUTTON(START),
 	_BUTTON(HOLD),
+
+	_BUTTON(JS_A),
+	_BUTTON(JS_B),
+	_BUTTON(JS_X),
+	_BUTTON(JS_Y),
+	_BUTTON(JS_L),
+	_BUTTON(JS_R),
+	_BUTTON(JS_SELECT),
+	_BUTTON(JS_START),
+
+	_HAT(JS_HAT0X, -1),
+	_HAT(JS_HAT0X,  1),
+	_HAT(JS_HAT0Y, -1),
+	_HAT(JS_HAT0Y,  1),
 };
 
 unsigned int nb_buttons = sizeof(buttons) / sizeof(buttons[0]);
@@ -119,8 +135,21 @@ int read_conf_file(const char *filename)
 			for (j = 0; j < nb_buttons; j++) {
 				size_t len = buttons[j].name_len - 1;
 				if (!strncmp(buttons[j].name, value, len)) {
-					if (vlen > len && value[len] != ',' && value[len] != '\n')
-						break;
+					if (vlen > len) {
+						if (!strncmp(buttons[j].name, "JS_HAT", 6)
+									&& value[len] == ':') {
+							char *ptr;
+							int hat_value = (int) strtol(value + len + 1, &ptr, 10);
+							if (hat_value != buttons[j].hat_value)
+								continue;
+							len = ptr - value;
+						} else if (value[len] != ',' && value[len] != '\n') {
+							fprintf(stderr, "Unknown shortcut button in config file: %.*s\n", len, value);
+							break;
+						}
+					}
+
+					DEBUGMSG("Registering key %s\n", buttons[j].name);
 					new->keys[nb_keys++] = &buttons[j];
 					value += len;
 					vlen -= len;

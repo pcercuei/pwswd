@@ -9,12 +9,6 @@
 #include "shortcut_handler.h"
 #include "backend/backends.h"
 
-#ifdef DEBUG
-#define DEBUGMSG(msg...) printf(msg)
-#else
-#define DEBUGMSG(msg...)
-#endif
-
 /* Time in seconds before poweroff when holding the power switch.
  * Set to 0 to disable this feature. */
 #ifndef POWEROFF_TIMEOUT
@@ -407,8 +401,11 @@ int do_listen(const char *event, const char *uinput)
 						struct button *button = tmp->keys[i];
 						was_combo &= !!button->state;
 						if (my_event.code == button->id) {
+							if (button->hat_value)
+								button->state = my_event.value == button->hat_value;
+							else
+								button->state = (my_event.value != 0);
 							match = 1;
-							button->state = (my_event.value != 0);
 						}
 						is_combo &= button->state;
 					}
