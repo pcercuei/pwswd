@@ -400,7 +400,8 @@ int do_listen(const char *event, const char *uinput)
 					for (i = 0; i < tmp->nb_keys; i++) {
 						struct button *button = tmp->keys[i];
 						was_combo &= !!button->state;
-						if (my_event.code == button->id) {
+						if (my_event.code == button->id
+									&& my_event.type == button->type) {
 							if (button->hat_value)
 								button->state = my_event.value == button->hat_value;
 							else

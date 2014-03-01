@@ -8,9 +8,9 @@
 #include "shortcut_handler.h"
 
 #define BUTTON(btn) BUTTON_##btn
-#define _BUTTON(btn) {#btn, sizeof #btn, BUTTON(btn), 0, 0}
+#define _BUTTON(btn) {#btn, sizeof #btn, EV_KEY, BUTTON(btn), 0, 0}
 
-#define _HAT(axis, value) {#axis, sizeof #axis, BUTTON(axis), 0, value}
+#define _HAT(axis, value) {#axis, sizeof #axis, EV_ABS, BUTTON(axis), 0, value}
 
 static struct shortcut *shortcuts;
 
