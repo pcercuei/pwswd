@@ -4,7 +4,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <string.h>
 
 #include "event_listener.h"
 #include "shortcut_handler.h"
@@ -36,18 +35,6 @@ static enum _mode mode = NORMAL;
 static FILE *event0, *uinput;
 static bool grabbed, power_button_pressed;
 
-static void enable_nonblock_read(void)
-{
-	if (fcntl(fileno(event0), F_SETFL, O_NONBLOCK) == -1)
-		perror(__func__);
-}
-
-static void disable_nonblock_read(void)
-{
-	if (fcntl(fileno(event0), F_SETFL, 0) == -1)
-		perror(__func__);
-}
-
 static void switchmode(enum _mode new)
 {
 	if (new == mode) return;
@@ -58,7 +45,8 @@ static void switchmode(enum _mode new)
 				case MOUSE:
 					// Enable non-blocking reads: we won't have to wait for an
 					// event to process mouse emulation.
-					enable_nonblock_read();
+					if (fcntl(fileno(event0), F_SETFL, O_NONBLOCK) == -1)
+						perror(__func__);
 					grabbed = true;
 					break;
 				case HOLD:
@@ -70,7 +58,9 @@ static void switchmode(enum _mode new)
 			mode = new;
 			break;
 		case MOUSE:
-			disable_nonblock_read();
+			// Disable non-blocking reads.
+			if (fcntl(fileno(event0), F_SETFL, 0) == -1)
+				perror(__func__);
 		case HOLD:
 			switch(new) {
 				case NORMAL:
@@ -333,21 +323,12 @@ int do_listen(const char *event, const char *uinput)
 	while(1) {
 		// We wait for an event.
 		// On mouse mode, this call does not block.
-		struct input_event my_event, repeat_event;
+		struct input_event my_event;
 		int read = fread(&my_event, sizeof(struct input_event), 1, event0);
 
-		if (!read) {
-			// If we are on "mouse" mode and nothing has been read, let's wait for a bit.
-			if (mode == MOUSE) {
-				usleep(10000);
-			} else {
-				// 100ms key repeat for d-pad in joystick mode
-				DEBUGMSG("Sleeping a bit for key repeat\n");
-				usleep(20000);
-				read = 1;
-				memcpy(&my_event, &repeat_event, sizeof(my_event));
-			}
-		}
+		// If we are on "mouse" mode and nothing has been read, let's wait for a bit.
+		if (mode == MOUSE && !read)
+			usleep(10000);
 
 		if (read) {
 			// If the power button is pressed, block inputs (if it wasn't already blocked)
@@ -382,11 +363,6 @@ int do_listen(const char *event, const char *uinput)
 					}
 
 					combo_used = false;
-
-					if (mode != MOUSE) {
-						DEBUGMSG("Disabling nonblock mode for fake key repeat\n");
-						disable_nonblock_read();
-					}
 				}
 
 #if (POWEROFF_TIMEOUT > 0)
@@ -415,6 +391,7 @@ int do_listen(const char *event, const char *uinput)
 				continue;
 			}
 
+
 			// If the power button is currently pressed, we enable shortcuts.
 			if (power_button_pressed) {
 				for (tmp = shortcuts; tmp; tmp = tmp->prev) {
@@ -425,21 +402,10 @@ int do_listen(const char *event, const char *uinput)
 						was_combo &= !!button->state;
 						if (my_event.code == button->id
 									&& my_event.type == button->type) {
-							if (button->hat_value) {
+							if (button->hat_value)
 								button->state = my_event.value == button->hat_value;
-									DEBUGMSG("Event value: %i hat value: %i\n",
-												my_event.value, button->hat_value);
-								if (button->state) {
-									DEBUGMSG("Enabling nonblock mode for fake key repeat\n");
-									memcpy(&repeat_event, &my_event, sizeof(my_event));
-									enable_nonblock_read();
-								} else if (my_event.value == 0) {
-									DEBUGMSG("Disabling nonblock mode for fake key repeat\n");
-									disable_nonblock_read();
-								}
-							} else {
+							else
 								button->state = (my_event.value != 0);
-							}
 							match = 1;
 						}
 						is_combo &= button->state;
