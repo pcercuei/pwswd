@@ -5,12 +5,6 @@
 #include <stdbool.h>
 #include <linux/input.h>
 
-#ifdef DEBUG
-#define DEBUGMSG(msg...) printf(msg)
-#else
-#define DEBUGMSG(msg...)
-#endif
-
 #define EVENT_SWITCH_POWER KEY_POWER
 
 int do_listen();

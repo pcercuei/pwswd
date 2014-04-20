@@ -17,26 +17,12 @@
 #define BUTTON_POWER KEY_HOME
 #define BUTTON_HOLD KEY_PAUSE
 
-#define BUTTON_JS_A BTN_EAST
-#define BUTTON_JS_B BTN_SOUTH
-#define BUTTON_JS_L BTN_THUMBL
-#define BUTTON_JS_R BTN_THUMBR
-#define BUTTON_JS_START BTN_START
-#define BUTTON_JS_SELECT BTN_SELECT
-
-#define BUTTON_JS_HAT0X ABS_HAT0X
-#define BUTTON_JS_HAT0Y ABS_HAT0Y
-
 #ifdef WITH_REVERSED_X_Y
 #define BUTTON_X KEY_SPACE
 #define BUTTON_Y KEY_LEFTSHIFT
-#define BUTTON_JS_X BTN_NORTH
-#define BUTTON_JS_Y BTN_WEST
 #else
 #define BUTTON_X KEY_LEFTSHIFT
 #define BUTTON_Y KEY_SPACE
-#define BUTTON_JS_X BTN_WEST
-#define BUTTON_JS_Y BTN_NORTH
 #endif
 
 enum event_type {
@@ -52,7 +38,6 @@ struct button {
 	size_t name_len;
 	unsigned short id;
 	unsigned short state;
-	int hat_value;
 };
 
 extern struct button buttons[];
