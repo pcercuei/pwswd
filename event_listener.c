@@ -164,6 +164,13 @@ static void execute(enum event_type event, int value)
 			do_kill();
 			break;
 #endif
+#ifdef BACKEND_RATIOMODE
+		case ratiomode:
+			if (value != 1) return;
+			str = "ratiomode";
+			do_change_ratiomode();
+			break;
+#endif
 		default:
 			return;
 	}

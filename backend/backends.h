@@ -34,6 +34,10 @@
 #include "kill/kill_backend.h"
 #endif
 
+#ifdef BACKEND_RATIOMODE
+#include "ratiomode/ratiomode.h"
+#endif
+
 #define FRAMEBUFFER "/dev/fb0"
 
 #endif
