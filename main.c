@@ -22,7 +22,7 @@
 #define UINPUT_FILENAME "/dev/uinput"
 #endif
 
-#ifndef DEFAULT_MIXER
+#if defined(BACKEND_VOLUME) && !defined(DEFAULT_MIXER)
 #error Makefile should define DEFAULT_MIXER
 #endif
 
