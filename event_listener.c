@@ -207,6 +207,7 @@ static int open_fds(const char *event0fn, const char *uinputfn)
 	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_START) == -1) goto filter_fail;
 	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_SELECT) == -1) goto filter_fail;
 	if (ioctl(fd, UI_SET_KEYBIT, BUTTON_POWER) == -1) goto filter_fail;
+	if (ioctl(fd, UI_SET_KEYBIT, KEY_SCALE) == -1) goto filter_fail;
 
 	if (ioctl(fd, UI_SET_EVBIT, EV_REL) == -1) goto filter_fail;
 	if (ioctl(fd, UI_SET_RELBIT, REL_X) == -1) goto filter_fail;
@@ -228,7 +229,7 @@ filter_fail:
 }
 
 
-static int inject(unsigned short type, unsigned short code, int value)
+int inject(unsigned short type, unsigned short code, int value)
 {
 	struct input_event inject_event;
 

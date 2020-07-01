@@ -9,5 +9,6 @@
 
 int do_listen();
 bool power_button_is_pressed(void);
+int inject(unsigned short type, unsigned short code, int value);
 
 #endif // EVENT_LISTENER_H
