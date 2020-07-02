@@ -6,7 +6,7 @@
 
 #include "bright_backend.h"
 
-#define SYSFS_DIR "/sys/devices/platform/board/board:backlight/backlight/board:backlight"
+#define SYSFS_DIR "/sys/class/backlight/backlight"
 #define BRIGHT_FILENAME SYSFS_DIR "/brightness"
 #define MAX_BRIGHT_FILENAME SYSFS_DIR "/max_brightness"
 #define BLANKING_FILENAME "/sys/class/graphics/fb0/blank"
