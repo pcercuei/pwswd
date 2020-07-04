@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.4)
 project(pwswd LANGUAGES C VERSION 1.0)
 
 set(BACKENDS "volume;brightness;poweroff;reboot;screenshot;tvout;suspend;kill;ratiomode" CACHE STRING "Semicolon-separated list of enabled backends")
@@ -42,4 +42,5 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 	$<IF:$<BOOL:${REVERSED_X_Y}>,REVERSED_X_Y,>
 )
 
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+include(GNUInstallDirs)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR})
