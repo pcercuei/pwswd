@@ -27,6 +27,8 @@
 #include <sys/time.h>
 #endif
 
+#define MOUSE_SENSITIVITY 2
+
 static struct uinput_user_dev uud = {
 	.name = "OpenDingux mouse daemon",
 	.id = { BUS_USB, 1,1,1 },
@@ -501,19 +503,19 @@ int do_listen(const char *event, const char *uinput)
 					switch(buttons[i].id) {
 						case BUTTON_LEFT:
 							code = REL_X;
-							value = -5;
+							value = -MOUSE_SENSITIVITY;
 							break;
 						case BUTTON_RIGHT:
 							code = REL_X;
-							value = 5;
+							value = MOUSE_SENSITIVITY;
 							break;
 						case BUTTON_DOWN:
 							code = REL_Y;
-							value = 5;
+							value = MOUSE_SENSITIVITY;
 							break;
 						case BUTTON_UP:
 							code = REL_Y;
-							value = -5;
+							value = -MOUSE_SENSITIVITY;
 							break;
 						default:
 							continue;
