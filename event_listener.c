@@ -405,6 +405,11 @@ int do_listen(const char *event, const char *uinput)
 						perror(__func__);
 				}
 				continue;
+#ifdef BACKEND_SUSPEND
+			} else if (my_event.code == EVENT_SWITCH_SUSPEND) {
+				do_suspend();
+				continue;
+#endif
 			}
 
 
