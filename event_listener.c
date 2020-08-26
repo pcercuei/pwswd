@@ -410,6 +410,14 @@ int do_listen(const char *event, const char *uinput)
 				do_suspend();
 				continue;
 #endif
+#ifdef BACKEND_VOLUME
+			} else if (my_event.code == EVENT_VOLUME_UP) {
+				vol_up(my_event.value);
+				continue;
+			} else if (my_event.code == EVENT_VOLUME_DOWN) {
+				vol_down(my_event.value);
+				continue;
+#endif
 			}
 
 

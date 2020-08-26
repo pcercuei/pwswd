@@ -7,6 +7,8 @@
 
 #define EVENT_SWITCH_POWER KEY_POWER
 #define EVENT_SWITCH_SUSPEND KEY_PAUSE
+#define EVENT_VOLUME_UP KEY_VOLUMEUP
+#define EVENT_VOLUME_DOWN KEY_VOLUMEDOWN
 
 int do_listen();
 bool power_button_is_pressed(void);
