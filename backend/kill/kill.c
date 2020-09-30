@@ -5,6 +5,7 @@
 
 #include "../backends.h"
 
+#define DRI_CARD "/dev/dri/by-path/platform-13050000.lcd-controller-card"
 #define TTY1 "/dev/tty1"
 
 void do_kill(void)
@@ -12,7 +13,7 @@ void do_kill(void)
 	int status;
 	pid_t son = fork();
 	if (!son)
-		execlp("fuser", "fuser", "-k", "-HUP", FRAMEBUFFER, NULL);
+		execlp("fuser", "fuser", "-k", "-HUP", DRI_CARD, NULL);
 
 	waitpid(son, &status, 0);
 	if (!status)
