@@ -239,8 +239,8 @@ int inject(unsigned short type, unsigned short code, int value)
 	inject_event.value = value;
 	inject_event.type = type;
 	inject_event.code = code;
-	inject_event.time.tv_sec = time(0);
-	inject_event.time.tv_usec = 0;
+	inject_event.input_event_sec = time(0);
+	inject_event.input_event_usec = 0;
 	return write(fileno(uinput), &inject_event, sizeof(struct input_event));
 }
 
