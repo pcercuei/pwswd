@@ -194,6 +194,8 @@ static int open_fds(const char *event0fn, const char *uinputfn)
 		return -1;
 	}
 
+	setvbuf(event0, NULL, _IONBF, 0);
+
 	int fd = fileno(uinput);
 	write(fd, &uud, sizeof(uud));
 
