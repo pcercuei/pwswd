@@ -20,12 +20,6 @@ if (volume IN_LIST BACKENDS)
 	set(MIXER_CONTROL "PCM" CACHE STRING "Default mixer control" FORCE)
 endif()
 
-if (screenshot IN_LIST BACKENDS)
-	find_package(PNG REQUIRED)
-	target_link_libraries(${PROJECT_NAME} LINK_PRIVATE ${PNG_LIBRARY})
-	target_include_directories(${PROJECT_NAME} PRIVATE EXTERNAL ${PNG_INCLUDE_DIR})
-endif()
-
 find_library(PTHREAD_LIBRARIES pthread REQUIRED)
 find_library(LIBINI_LIBRARIES ini REQUIRED)
 find_path(LIBINI_INCLUDE_DIR ini.h REQUIRED)
